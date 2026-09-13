@@ -3995,6 +3995,15 @@ public class GameMenu implements Game.GameMenuCallbacks {
                         (batteryStatus.hasAnyRestriction() ? batteryStatus.getShortStatusText(game) : "Unrestricted ✓"),
                 () -> showBatteryStatusDialog(device)));
 
+        boolean disconnectMobile = game.isDisconnectOnMobileDataEnabled();
+        options.add(new MenuOption("bg_disconnect_mobile_toggle",
+                getString(R.string.title_disconnect_on_mobile_data) + ": " +
+                        (disconnectMobile ? "ON (Wi-Fi Only) ✓" : "OFF (Allow Mobile)"),
+                () -> {
+                    game.updateDisconnectOnMobileDataPref(!disconnectMobile);
+                    showBackgroundSettingsMenu(device);
+                }));
+
         options.add(new MenuOption(MENU_CANCEL, getString(R.string.game_menu_cancel), null));
         showMenuDialog(getString(R.string.game_menu_background_settings),
                 options.toArray(new MenuOption[0]), () -> showAdvancedMenu(device));

@@ -162,16 +162,20 @@ jobs:
           High-performance GameStream / Sunshine / Apollo client for Android based on Artemis Android Extended.
 
           ### Highlights & Features:
+          - **Standalone Package ID (`dev.ajaretro.europagleam`)**: Installable alongside Artemis and vanilla Moonlight with zero package or provider conflicts.
+          - **ajaretro.dev Brand Identity**: Official brand icon with high-res launcher assets and custom styling.
           - **Target Android 12 (API 31)**: Optimized modern runtime compatibility and permissions.
           - **Background Streaming**: Stream continues active when the app is minimized or switched away, backed by a persistent low-priority foreground service.
           - **Hot-Swappable Background Audio**: Seamlessly listen to game audio in the background or mute audio cleanly to preserve device battery, togglable anytime in settings or the in-game quick menu.
           - **F15 Anti-Timeout Keepalive**: Transmits virtual F15 key events at randomized 1 min (±30s) intervals to keep remote host sessions awake and prevent idle screensaver/timeout (`Always`, `Background Only`, or `Disabled`).
+          - **Battery Saver & Restriction Shield**: Live detection and actionable prompts for Android Battery Saver, Doze restrictions, and OEM background killers.
+          - **Wi-Fi Only & Mobile Data Auto-Disconnect**: Automatically disconnects stream if Wi-Fi drops and transitions to cellular mobile data to avoid accidental high carrier usage. Can be overridden in settings or in-game menu.
           - **Game Mode & Funtouch OS Esports Integration**: Marked with `isGame="true"`, `appCategory="game"`, performance game mode config, and Vivo Esports metadata triggers.
           - **Native Wireless DualSense (PS5) Support**: Adaptive triggers, HD haptics, motion/gyro relay, DualSense controller speaker audio, and microphone routing.
 
           ### Downloads:
-          - **`EuropaGleam-...-universal.apk`**: Universal build for all architectures (recommended for most devices).
-          - **`EuropaGleam-...-arm64-v8a.apk`**: Optimized 64-bit ARM build (modern phones and tablets).
+          - **`EuropaGleam-...-arm64-v8a.apk`**: (~38 MB) **Recommended** for modern Android phones and tablets.
+          - **`EuropaGleam-...-universal.apk`**: Universal build containing all CPU architectures.
           - **`EuropaGleam-...-root.apk`**: For rooted devices requiring direct low-level input capture.
 
           ### Verification:

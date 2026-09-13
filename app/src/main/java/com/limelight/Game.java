@@ -84,6 +84,9 @@ import android.hardware.display.DisplayManager;
 import android.hardware.input.InputManager;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -635,6 +638,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             });
         }
 
+        // Setup mobile data network monitoring
+        setupNetworkMonitoring();
+
         // Warn the user if they're on a metered connection
         ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         boolean isMetered = connMgr.isActiveNetworkMetered();
@@ -969,17 +975,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         //streamContainer.getHolder().addCallback(this);
 
         streamContainer.setOnSurfaceAvailable(() -> {
-            if (!attemptedConnection) {
-                LimeLog.info("Surface is available, starting connection...");
-                attemptedConnection = true;
-
-                // Der Decoder erhält die jeweils aktive Oberfläche vom Container
-                decoderRenderer.setRenderTarget(streamContainer.getSurface());
-
-                // Starten Sie die NvConnection
-                conn.start(new AndroidAudioRenderer(Game.this, prefConfig.playHostAudio),
-                        decoderRenderer, Game.this);
-            }
+            surfaceAvailable = true;
+            checkAndStartConnection();
         });
 
         gameMenuCallbacks = new GameMenu(this);
@@ -1804,6 +1801,17 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     protected void onDestroy() {
+        if (mobileDataNetworkCallback != null) {
+            try {
+                ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                if (connMgr != null) {
+                    connMgr.unregisterNetworkCallback(mobileDataNetworkCallback);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            mobileDataNetworkCallback = null;
+        }
         DualSenseBridge.removeInputListener(controllerBatteryInputListener);
         if (keepaliveManager != null) {
             keepaliveManager.stop();
@@ -2125,6 +2133,137 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     public int getKeepaliveF15Mode() {
         return prefConfig != null ? prefConfig.keepaliveF15Mode : PreferenceConfiguration.KEEPALIVE_ALWAYS;
+    }
+
+    private boolean surfaceAvailable = false;
+    private boolean mobileDataPromptShowing = false;
+    private ConnectivityManager.NetworkCallback mobileDataNetworkCallback;
+    private boolean hasTriggeredMobileDisconnect = false;
+
+    private void checkAndStartConnection() {
+        if (!surfaceAvailable || attemptedConnection || isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
+
+        if (prefConfig != null && prefConfig.disconnectOnMobileData && com.limelight.utils.NetHelper.isCellularNetwork(this)) {
+            if (!mobileDataPromptShowing) {
+                mobileDataPromptShowing = true;
+                showMobileDataBlockedDialog();
+            }
+            return;
+        }
+
+        startStreamConnection();
+    }
+
+    private void startStreamConnection() {
+        if (!surfaceAvailable || attemptedConnection || isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
+        LimeLog.info("Surface is available, starting connection...");
+        attemptedConnection = true;
+
+        decoderRenderer.setRenderTarget(streamContainer.getSurface());
+        conn.start(new AndroidAudioRenderer(Game.this, prefConfig.playHostAudio),
+                decoderRenderer, Game.this);
+    }
+
+    private void showMobileDataBlockedDialog() {
+        runOnUiThread(() -> {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.mobile_data_blocked_title)
+                    .setMessage(R.string.mobile_data_blocked_message)
+                    .setPositiveButton(R.string.mobile_data_allow_button, (dialog, which) -> {
+                        mobileDataPromptShowing = false;
+                        updateDisconnectOnMobileDataPref(false);
+                        startStreamConnection();
+                    })
+                    .setNegativeButton(R.string.game_menu_cancel, (dialog, which) -> {
+                        mobileDataPromptShowing = false;
+                        finish();
+                    })
+                    .setCancelable(false)
+                    .show();
+        });
+    }
+
+    private void setupNetworkMonitoring() {
+        ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connMgr == null) return;
+
+        mobileDataNetworkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onCapabilitiesChanged(Network network, NetworkCapabilities capabilities) {
+                checkMobileDataTransition(capabilities);
+            }
+
+            @Override
+            public void onAvailable(Network network) {
+                if (connMgr != null) {
+                    NetworkCapabilities caps = connMgr.getNetworkCapabilities(network);
+                    if (caps != null) {
+                        checkMobileDataTransition(caps);
+                    }
+                }
+            }
+        };
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                connMgr.registerDefaultNetworkCallback(mobileDataNetworkCallback);
+            } else {
+                NetworkRequest request = new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build();
+                connMgr.registerNetworkCallback(request, mobileDataNetworkCallback);
+            }
+        } catch (Exception e) {
+            LimeLog.warning("Failed to register network callback: " + e.getMessage());
+        }
+    }
+
+    private void checkMobileDataTransition(NetworkCapabilities capabilities) {
+        if (hasTriggeredMobileDisconnect || isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
+
+        if (prefConfig != null && prefConfig.disconnectOnMobileData) {
+            if (com.limelight.utils.NetHelper.isCellular(capabilities)) {
+                triggerMobileDataDisconnect();
+            }
+        }
+    }
+
+    private void triggerMobileDataDisconnect() {
+        if (hasTriggeredMobileDisconnect || isFinishing()) {
+            return;
+        }
+        hasTriggeredMobileDisconnect = true;
+        LimeLog.info("Auto-disconnecting stream: switched to cellular / mobile data");
+        runOnUiThread(() -> {
+            Toast.makeText(getApplicationContext(),
+                    R.string.toast_disconnected_switched_to_mobile_data,
+                    Toast.LENGTH_LONG).show();
+            StreamKeepaliveService.notifyMobileDataDisconnect(Game.this);
+            stopConnection();
+            finish();
+        });
+    }
+
+    public void updateDisconnectOnMobileDataPref(boolean enabled) {
+        if (prefConfig != null) {
+            prefConfig.disconnectOnMobileData = enabled;
+        }
+        PreferenceManager.getDefaultSharedPreferences(this).edit()
+                .putBoolean(PreferenceConfiguration.DISCONNECT_ON_MOBILE_DATA_PREF_STRING, enabled)
+                .apply();
+        if (enabled && com.limelight.utils.NetHelper.isCellularNetwork(this)) {
+            triggerMobileDataDisconnect();
+        }
+    }
+
+    public boolean isDisconnectOnMobileDataEnabled() {
+        return prefConfig != null && prefConfig.disconnectOnMobileData;
     }
 
     @Override

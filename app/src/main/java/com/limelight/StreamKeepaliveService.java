@@ -41,6 +41,44 @@ public class StreamKeepaliveService extends Service {
         context.startService(intent);
     }
 
+    public static void notifyMobileDataDisconnect(Context context) {
+        if (context == null) return;
+        try {
+            NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager == null) return;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(
+                        CHANNEL_ID,
+                        context.getString(R.string.notification_channel_background_streaming),
+                        NotificationManager.IMPORTANCE_DEFAULT
+                );
+                manager.createNotificationChannel(channel);
+            }
+
+            Intent openAppIntent = new Intent(context, PcView.class);
+            openAppIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent contentPendingIntent = PendingIntent.getActivity(
+                    context,
+                    2,
+                    openAppIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+            );
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                    .setContentTitle(context.getString(R.string.notification_disconnected_mobile_data_title))
+                    .setContentText(context.getString(R.string.notification_disconnected_mobile_data_text))
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setAutoCancel(true)
+                    .setContentIntent(contentPendingIntent)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH);
+
+            manager.notify(NOTIFICATION_ID + 1, builder.build());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();

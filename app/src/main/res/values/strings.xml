@@ -1045,4 +1045,13 @@
     <string name="battery_dialog_open_battery_settings">Open Battery Settings</string>
     <string name="battery_dialog_open_saver_settings">Open Power Saver Settings</string>
     <string name="notification_battery_warning_suffix">• ⚠️ Battery Saver / Restriction Active</string>
+    <!-- Mobile Data Auto-Disconnect Strings -->
+    <string name="title_disconnect_on_mobile_data">Auto-disconnect on mobile data (Wi-Fi only)</string>
+    <string name="summary_disconnect_on_mobile_data">Automatically disconnect the stream if Wi-Fi drops and switches to mobile data. Blocks streaming on cellular by default.</string>
+    <string name="toast_disconnected_switched_to_mobile_data">Stream disconnected: Wi-Fi lost and switched to mobile data.</string>
+    <string name="notification_disconnected_mobile_data_title">Stream Disconnected</string>
+    <string name="notification_disconnected_mobile_data_text">Wi-Fi connection lost. Disconnected to prevent mobile data usage.</string>
+    <string name="mobile_data_blocked_title">Mobile Data Streaming Blocked</string>
+    <string name="mobile_data_blocked_message">EuropaGleam is currently set to Wi-Fi only to prevent large cellular data usage. You can allow mobile data streaming in Settings or continue now.</string>
+    <string name="mobile_data_allow_button">Stream on Mobile Data</string>
 </resources>
