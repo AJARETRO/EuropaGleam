@@ -107,8 +107,8 @@ jobs:
           BUILD_TOOLS_DIR=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
           APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
 
-          # Keystore setup: use secret if available, otherwise generate on the fly
-          KEYSTORE="release.keystore"
+          # Keystore setup: use secret if available, otherwise use committed repository release.keystore
+          KEYSTORE="app/release.keystore"
           KS_PASS="europagleam"
           ALIAS="europagleam"
 
@@ -118,11 +118,7 @@ jobs:
             KS_PASS="${{ secrets.RELEASE_KEYSTORE_PASSWORD }}"
             ALIAS="${{ secrets.RELEASE_KEY_ALIAS }}"
           else
-            echo "Generating release signing keystore..."
-            keytool -genkeypair -v -keystore $KEYSTORE -alias $ALIAS \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass $KS_PASS -keypass $KS_PASS \
-              -dname "CN=EuropaGleam, OU=Development, O=EuropaGleam, L=Global, S=Global, C=US"
+            echo "Using official committed EuropaGleam release keystore ($KEYSTORE)..."
           fi
 
           # Sign all NonRoot APKs (standard user APKs: universal, arm64-v8a, armeabi-v7a, x86, x86_64)
