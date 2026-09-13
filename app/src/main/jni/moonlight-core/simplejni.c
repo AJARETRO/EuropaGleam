@@ -286,8 +286,3 @@ Java_com_limelight_nvstream_jni_MoonBridge_sendMicrophonePacket(JNIEnv *env, jcl
     (*env)->ReleaseByteArrayElements(env, packet, data, JNI_ABORT);
     return result;
 }
-
-JNIEXPORT void JNICALL
-Java_com_limelight_nvstream_jni_MoonBridge_requestIdrFrame(JNIEnv *env, jclass clazz) {
-    LiRequestIdrFrame();
-}
