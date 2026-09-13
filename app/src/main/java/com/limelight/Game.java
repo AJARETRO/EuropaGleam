@@ -1791,10 +1791,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // that case here too.
         if (isInMultiWindowMode) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            decoderRenderer.notifyVideoBackground();
         }
         else {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
+        if (decoderRenderer != null) {
             decoderRenderer.notifyVideoForeground();
         }
 
@@ -2090,11 +2091,18 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             if (streamContainer != null && streamContainer.getSurface() != null && streamContainer.getSurface().isValid()) {
                 decoderRenderer.setRenderTarget(streamContainer.getSurface());
             }
+            try {
+                MoonBridge.requestIdrFrame();
+            } catch (Throwable ignored) {}
         }
 
         if (streamContainer != null) {
             streamContainer.requestLayout();
             streamContainer.invalidate();
+            if (streamContainer.getSurfaceView() != null) {
+                streamContainer.getSurfaceView().requestLayout();
+                streamContainer.getSurfaceView().invalidate();
+            }
         }
     }
 
@@ -4770,6 +4778,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         if (decoderRenderer != null && holder.getSurface() != null && holder.getSurface().isValid()) {
             decoderRenderer.setRenderTarget(holder.getSurface());
+            try {
+                MoonBridge.requestIdrFrame();
+            } catch (Throwable ignored) {}
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -4817,6 +4828,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (decoderRenderer != null) {
             decoderRenderer.notifyVideoForeground();
             decoderRenderer.setRenderTarget(holder.getSurface());
+            try {
+                MoonBridge.requestIdrFrame();
+            } catch (Throwable ignored) {}
         }
     }
 
@@ -4832,6 +4846,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             if (prefConfig.enableBackgroundStreaming && !isFinishing()) {
                 if (decoderRenderer != null) {
                     decoderRenderer.notifyVideoBackground();
+                    decoderRenderer.onSurfaceDestroyed();
                 }
             } else {
                 // Let the decoder know immediately that the surface is gone

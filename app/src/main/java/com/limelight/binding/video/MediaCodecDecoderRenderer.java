@@ -66,8 +66,10 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     // Helper: release with low-latency policy (immediate only when very near to now)
     private void releaseWithPolicy(int bufferIndex, long frameTimeNanos) {
         try {
-            if (!foreground) {
-                videoDecoder.releaseOutputBuffer(bufferIndex, false);
+            if (!foreground || !surfaceAvailable || renderTarget == null || !renderTarget.isValid() || videoDecoder == null) {
+                if (videoDecoder != null) {
+                    videoDecoder.releaseOutputBuffer(bufferIndex, false);
+                }
                 return;
             }
             long now = System.nanoTime();
@@ -79,10 +81,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
             }
         } catch (Throwable t) {
             try {
-                if (!foreground) {
+                if (videoDecoder != null) {
                     videoDecoder.releaseOutputBuffer(bufferIndex, false);
-                } else {
-                    videoDecoder.releaseOutputBuffer(bufferIndex, true);
                 }
             } catch (Throwable ignored) {}
         }
@@ -146,6 +146,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private int consecutiveCrashCount;
     private String glRenderer;
     private boolean foreground = true;
+    private volatile boolean surfaceAvailable = false;
+    private volatile boolean needsReinitOnSurfaceAvailable = false;
     private volatile boolean needsIdrFrame = false;
     private volatile long lastIdrRequestTimeMs = 0;
     private PerfOverlayListener perfListener;
@@ -367,17 +369,115 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
         return decoderInfo;
     }
 
-    public void setRenderTarget(Surface renderTarget) {
+    public synchronized void onSurfaceDestroyed() {
+        LimeLog.info("MediaCodec: onSurfaceDestroyed -> surface invalidated");
+        this.surfaceAvailable = false;
+        this.foreground = false;
+        this.renderTarget = null;
+        this.needsIdrFrame = true;
+    }
+
+    public synchronized void setRenderTarget(Surface renderTarget) {
+        LimeLog.info("MediaCodec: setRenderTarget called: " + renderTarget +
+                " (valid=" + (renderTarget != null && renderTarget.isValid()) + ")");
+
+        if (renderTarget == null || !renderTarget.isValid()) {
+            this.renderTarget = null;
+            this.surfaceAvailable = false;
+            return;
+        }
+
         this.renderTarget = renderTarget;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && videoDecoder != null && renderTarget != null && renderTarget.isValid()) {
+        this.surfaceAvailable = true;
+        this.foreground = true;
+
+        boolean reinitNeeded = needsReinitOnSurfaceAvailable || stopping || (videoDecoder == null);
+
+        if (!reinitNeeded && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && videoDecoder != null) {
             try {
                 videoDecoder.setOutputSurface(renderTarget);
                 LimeLog.info("setOutputSurface attached successfully: " + renderTarget);
+                try {
+                    videoDecoder.flush();
+                } catch (Throwable ignored) {}
             } catch (Throwable t) {
-                LimeLog.warning("setOutputSurface failed: " + t.getMessage());
+                LimeLog.warning("setOutputSurface failed (" + t.getMessage() + "), will reinitialize decoder cleanly...");
+                reinitNeeded = true;
+            }
+        } else {
+            reinitNeeded = true;
+        }
+
+        if (reinitNeeded) {
+            reinitializeDecoderForNewSurface(renderTarget);
+        }
+
+        submittedCsd = false;
+        vpsBuffers.clear();
+        spsBuffers.clear();
+        ppsBuffers.clear();
+
+        needsIdrFrame = true;
+        lastIdrRequestTimeMs = 0;
+        needsReinitOnSurfaceAvailable = false;
+
+        if (rendererThread == null || !rendererThread.isAlive()) {
+            stopping = false;
+            startRendererThread();
+        }
+
+        if (prefs != null && prefs.framePacing == PreferenceConfiguration.FRAME_PACING_BALANCED) {
+            if (choreographerHandlerThread == null || !choreographerHandlerThread.isAlive()) {
+                startChoreographerThread();
             }
         }
-        needsIdrFrame = true;
+
+        try {
+            MoonBridge.requestIdrFrame();
+            LimeLog.info("Requested host IDR frame on setRenderTarget");
+        } catch (Throwable t) {
+            LimeLog.warning("Failed to request IDR frame: " + t.getMessage());
+        }
+    }
+
+    private synchronized void reinitializeDecoderForNewSurface(Surface newSurface) {
+        LimeLog.info("Reinitializing decoder for new surface...");
+        this.renderTarget = newSurface;
+        this.surfaceAvailable = false;
+
+        if (videoDecoder != null) {
+            try {
+                videoDecoder.stop();
+            } catch (Throwable ignored) {}
+            try {
+                videoDecoder.release();
+            } catch (Throwable ignored) {}
+            videoDecoder = null;
+        }
+
+        nextInputBuffer = null;
+        nextInputBufferIndex = -1;
+        outputBufferQueue.clear();
+        submittedCsd = false;
+        vpsBuffers.clear();
+        spsBuffers.clear();
+        ppsBuffers.clear();
+
+        codecRecoveryAttempts = 0;
+        codecRecoveryType.set(CR_RECOVERY_TYPE_NONE);
+        stopping = false;
+
+        try {
+            int err = initializeDecoder(false);
+            if (err != 0) {
+                LimeLog.severe("initializeDecoder failed during reinit: " + err);
+            } else {
+                LimeLog.info("Decoder reinitialized successfully with new surface");
+                this.surfaceAvailable = true;
+            }
+        } catch (Throwable t) {
+            LimeLog.severe("Failed to reinitialize decoder: " + t.getMessage());
+        }
     }
 
     public MediaCodecDecoderRenderer(Activity activity, PreferenceConfiguration prefs,
@@ -542,10 +642,18 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
         foreground = true;
         needsIdrFrame = true;
         LimeLog.info("Video marked foreground -> requested IDR keyframe");
+        if (renderTarget != null && renderTarget.isValid()) {
+            surfaceAvailable = true;
+        }
+        try {
+            MoonBridge.requestIdrFrame();
+        } catch (Throwable ignored) {}
     }
 
     public void notifyVideoBackground() {
         foreground = false;
+        needsIdrFrame = true;
+        LimeLog.info("Video marked background");
     }
 
     public int getActiveVideoFormat() {
@@ -822,6 +930,10 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
         this.videoFormat = format;
         this.refreshRate = redrawRate;
 
+        if (renderTarget != null && renderTarget.isValid()) {
+            surfaceAvailable = true;
+        }
+
         return initializeDecoder(false);
     }
 
@@ -879,10 +991,9 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                         configureAndStartDecoder(configuredFormat);
                         codecRecoveryType.set(CR_RECOVERY_TYPE_NONE);
                     } catch (IllegalArgumentException e) {
-                        e.printStackTrace();
-
-                        // Our Surface is probably invalid, so just stop
-                        stopping = true;
+                        LimeLog.warning("Codec configure failed with invalid surface: " + e.getMessage());
+                        surfaceAvailable = false;
+                        needsReinitOnSurfaceAvailable = true;
                         codecRecoveryType.set(CR_RECOVERY_TYPE_NONE);
                     } catch (IllegalStateException e) {
                         e.printStackTrace();
@@ -902,10 +1013,9 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                         configureAndStartDecoder(configuredFormat);
                         codecRecoveryType.set(CR_RECOVERY_TYPE_NONE);
                     } catch (IllegalArgumentException e) {
-                        e.printStackTrace();
-
-                        // Our Surface is probably invalid, so just stop
-                        stopping = true;
+                        LimeLog.warning("Codec configure failed with invalid surface: " + e.getMessage());
+                        surfaceAvailable = false;
+                        needsReinitOnSurfaceAvailable = true;
                         codecRecoveryType.set(CR_RECOVERY_TYPE_NONE);
                     } catch (IllegalStateException e) {
                         e.printStackTrace();
@@ -928,10 +1038,9 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                         }
                         codecRecoveryType.set(CR_RECOVERY_TYPE_NONE);
                     } catch (IllegalArgumentException e) {
-                        e.printStackTrace();
-
-                        // Our Surface is probably invalid, so just stop
-                        stopping = true;
+                        LimeLog.warning("Codec configure failed with invalid surface: " + e.getMessage());
+                        surfaceAvailable = false;
+                        needsReinitOnSurfaceAvailable = true;
                         codecRecoveryType.set(CR_RECOVERY_TYPE_NONE);
                     } catch (IllegalStateException e) {
                         // If we failed to recover after all of these attempts, just crash
@@ -1092,6 +1201,11 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
             return;
         }
 
+        if (!surfaceAvailable || renderTarget == null || !renderTarget.isValid() || videoDecoder == null) {
+            Choreographer.getInstance().postFrameCallback(this);
+            return;
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             frameTimeNanos -= activity.getWindowManager().getDefaultDisplay().getAppVsyncOffsetNanos();
         }
@@ -1229,6 +1343,15 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                 BufferInfo info = new BufferInfo();
                 long lastOutputNs = System.nanoTime();
                 while (!stopping) {
+                    if (stopping) break;
+
+                    if (!surfaceAvailable || renderTarget == null || !renderTarget.isValid() || videoDecoder == null) {
+                        try {
+                            Thread.sleep(16);
+                        } catch (InterruptedException ignored) {}
+                        continue;
+                    }
+
                     /* LATEST_ONLY_LOW_LATENCY */
                     if (!preferLowerDelays) {
                         try {
@@ -1775,6 +1898,13 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                                 long receiveTimeMs, long enqueueTimeMs) {
         if (stopping) {
             // Don't bother if we're stopping
+            return MoonBridge.DR_OK;
+        }
+
+        if (!surfaceAvailable || renderTarget == null || !renderTarget.isValid() || videoDecoder == null) {
+            // Surface unavailable (screen off, background, or reinitializing).
+            // Do NOT feed data to decoder to avoid hardware codec crash or leaking buffers.
+            needsIdrFrame = true;
             return MoonBridge.DR_OK;
         }
 

@@ -447,5 +447,7 @@ public class MoonBridge {
 
     public static native boolean guessControllerHasShareButton(int vendorId, int productId);
 
+    public static native void requestIdrFrame();
+
     public static native void init();
 }
