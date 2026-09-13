@@ -43,6 +43,7 @@ import android.util.Range;
 import android.view.Choreographer;
 import android.view.Surface;
 import com.limelight.utils.HardwareMonitor;
+import java.util.Locale;
 
 public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements Choreographer.FrameCallback {
     // Latency profile: favor minimal end-to-end delay over absolute smoothness.

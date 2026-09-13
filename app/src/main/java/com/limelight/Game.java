@@ -5283,7 +5283,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
                     checked[which] = isChecked;
                 })
-                .setPositiveButton(R.string.ok, (dialog, which) -> {
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
                     prefConfig.perfOverlayShowFps = checked[0];
                     prefConfig.perfOverlayShowPing = checked[1];
                     prefConfig.perfOverlayShowHostEncode = checked[2];
