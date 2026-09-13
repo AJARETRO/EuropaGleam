@@ -1038,6 +1038,26 @@
             android:summary="@string/summary_prevent_packet_loss"
             android:title="@string/title_prevent_packet_loss"
             app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_enable_background_streaming"
+            android:summary="@string/summary_enable_background_streaming"
+            android:title="@string/title_enable_background_streaming"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_enable_background_audio"
+            android:summary="@string/summary_enable_background_audio"
+            android:title="@string/title_enable_background_audio"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:defaultValue="2"
+            android:entries="@array/keepalive_f15_names"
+            android:entryValues="@array/keepalive_f15_values"
+            android:key="list_keepalive_f15_mode"
+            android:summary="@string/summary_keepalive_f15_mode"
+            android:title="@string/title_keepalive_f15_mode"
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
     <PreferenceCategory

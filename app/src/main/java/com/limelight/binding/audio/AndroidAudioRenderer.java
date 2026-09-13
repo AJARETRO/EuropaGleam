@@ -28,6 +28,15 @@ public class AndroidAudioRenderer implements AudioRenderer {
     private final ArrayBlockingQueue<short[]> freeAudioBuffers = new ArrayBlockingQueue<>(6);
     private volatile boolean audioWriterRunning;
     private Thread audioWriterThread;
+    private static volatile boolean muted = false;
+
+    public static void setMuted(boolean mute) {
+        muted = mute;
+    }
+
+    public static boolean isMuted() {
+        return muted;
+    }
 
     public AndroidAudioRenderer(Context context, boolean enableAudioFx) {
         this.context = context;
@@ -199,6 +208,9 @@ public class AndroidAudioRenderer implements AudioRenderer {
 
     @Override
     public void playDecodedAudio(short[] audioData) {
+        if (muted) {
+            return;
+        }
         // With a wired DualSense headset attached, the native USB ISO stream
         // becomes the audio sink. Do this before AudioTrack.write() so game
         // audio does not leak to the phone/tablet speakers in parallel.

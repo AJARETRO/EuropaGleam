@@ -215,6 +215,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private boolean autoEnterPip = false;
     private boolean surfaceCreated = false;
     private boolean attemptedConnection = false;
+    private boolean isInBackground = false;
+    private com.limelight.utils.KeepaliveManager keepaliveManager;
     private int suppressPipRefCount = 0;
     private String pcName;
     private String appName;
@@ -432,6 +434,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Read the stream preferences
         prefConfig = PreferenceConfiguration.readPreferences(this);
+        keepaliveManager = new com.limelight.utils.KeepaliveManager(prefConfig);
         DualSenseAudioBridge.configure(prefConfig.dualSenseAudioMode,
                 prefConfig.dualSenseControllerVolume);
         DualSenseMicrophoneBridge.configure(prefConfig.dualSenseMicrophoneEnabled ?
@@ -1802,6 +1805,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     @Override
     protected void onDestroy() {
         DualSenseBridge.removeInputListener(controllerBatteryInputListener);
+        if (keepaliveManager != null) {
+            keepaliveManager.stop();
+        }
+        StreamKeepaliveService.stop(this);
+        com.limelight.binding.audio.AndroidAudioRenderer.setMuted(false);
         super.onDestroy();
 
         instance = null;
@@ -2031,7 +2039,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     protected void onPause() {
-        if (isFinishing()) {
+        if (isFinishing() || !prefConfig.enableBackgroundStreaming) {
             // Stop any further input device notifications before we lose focus (and pointer capture)
             if (controllerHandler != null) {
                 controllerHandler.stop();
@@ -2042,6 +2050,85 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
 
         super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (isInBackground) {
+            isInBackground = false;
+            if (keepaliveManager != null) {
+                keepaliveManager.setInBackground(false);
+            }
+            com.limelight.binding.audio.AndroidAudioRenderer.setMuted(false);
+            StreamKeepaliveService.stop(this);
+
+            if (decoderRenderer != null) {
+                decoderRenderer.notifyVideoForeground();
+                if (streamContainer != null && streamContainer.getSurface() != null) {
+                    decoderRenderer.setRenderTarget(streamContainer.getSurface());
+                }
+            }
+
+            if (conn != null && connected) {
+                conn.sendRequestIdrFrame();
+            }
+
+            setInputGrabState(true);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent != null && StreamKeepaliveService.ACTION_DISCONNECT.equals(intent.getAction())) {
+            stopConnection();
+            finish();
+        }
+    }
+
+    public void updateBackgroundStreamingPref(boolean enabled) {
+        prefConfig.enableBackgroundStreaming = enabled;
+        PreferenceManager.getDefaultSharedPreferences(this).edit()
+                .putBoolean(PreferenceConfiguration.ENABLE_BACKGROUND_STREAMING_PREF_STRING, enabled)
+                .apply();
+        if (!enabled && isInBackground) {
+            stopConnection();
+            finish();
+        }
+    }
+
+    public boolean isBackgroundStreamingEnabled() {
+        return prefConfig != null && prefConfig.enableBackgroundStreaming;
+    }
+
+    public void updateBackgroundAudioPref(boolean enabled) {
+        prefConfig.enableBackgroundAudio = enabled;
+        PreferenceManager.getDefaultSharedPreferences(this).edit()
+                .putBoolean(PreferenceConfiguration.ENABLE_BACKGROUND_AUDIO_PREF_STRING, enabled)
+                .apply();
+        if (isInBackground) {
+            com.limelight.binding.audio.AndroidAudioRenderer.setMuted(!enabled);
+        }
+    }
+
+    public boolean isBackgroundAudioEnabled() {
+        return prefConfig != null && prefConfig.enableBackgroundAudio;
+    }
+
+    public void updateKeepaliveModePref(int mode) {
+        prefConfig.keepaliveF15Mode = mode;
+        PreferenceManager.getDefaultSharedPreferences(this).edit()
+                .putString(PreferenceConfiguration.KEEPALIVE_F15_MODE_PREF_STRING, String.valueOf(mode))
+                .apply();
+        if (keepaliveManager != null) {
+            keepaliveManager.updatePreferences(prefConfig);
+        }
+    }
+
+    public int getKeepaliveF15Mode() {
+        return prefConfig != null ? prefConfig.keepaliveF15Mode : PreferenceConfiguration.KEEPALIVE_ALWAYS;
     }
 
     @Override
@@ -2063,6 +2150,18 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
 
         if (conn != null) {
+            if (prefConfig.enableBackgroundStreaming && !isFinishing()) {
+                isInBackground = true;
+                if (keepaliveManager != null) {
+                    keepaliveManager.setInBackground(true);
+                }
+                if (!prefConfig.enableBackgroundAudio) {
+                    com.limelight.binding.audio.AndroidAudioRenderer.setMuted(true);
+                }
+                StreamKeepaliveService.start(this);
+                return;
+            }
+
             int videoFormat = decoderRenderer.getActiveVideoFormat();
 
             displayedFailureDialog = true;
@@ -3918,6 +4017,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private void stopConnection() {
         if (connecting || connected) {
             connecting = connected = false;
+            if (keepaliveManager != null) {
+                keepaliveManager.stop();
+            }
+            StreamKeepaliveService.stop(this);
+            com.limelight.binding.audio.AndroidAudioRenderer.setMuted(false);
             updatePipAutoEnter();
 
             // The microphone sender uses Moonlight's encrypted control stream.
@@ -4156,6 +4260,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
                 connected = true;
                 connecting = false;
+                if (keepaliveManager != null) {
+                    keepaliveManager.start(conn);
+                }
                 startClientMicrophoneCapture();
                 updatePipAutoEnter();
 
@@ -4413,6 +4520,14 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             holder.getSurface().setFrameRate(desiredFrameRate,
                     Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE);
         }
+
+        if (decoderRenderer != null) {
+            decoderRenderer.notifyVideoForeground();
+            decoderRenderer.setRenderTarget(holder.getSurface());
+            if (conn != null && connected) {
+                conn.sendRequestIdrFrame();
+            }
+        }
     }
 
     @Override
@@ -4421,12 +4536,20 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             throw new IllegalStateException("Surface destroyed before creation!");
         }
 
-        if (attemptedConnection) {
-            // Let the decoder know immediately that the surface is gone
-            decoderRenderer.prepareForStop();
+        surfaceCreated = false;
 
-            if (connected) {
-                stopConnection();
+        if (attemptedConnection) {
+            if (prefConfig.enableBackgroundStreaming && !isFinishing()) {
+                if (decoderRenderer != null) {
+                    decoderRenderer.notifyVideoBackground();
+                }
+            } else {
+                // Let the decoder know immediately that the surface is gone
+                decoderRenderer.prepareForStop();
+
+                if (connected) {
+                    stopConnection();
+                }
             }
         }
     }

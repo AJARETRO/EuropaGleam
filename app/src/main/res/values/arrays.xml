@@ -234,4 +234,14 @@
         <item>right</item>
     </string-array>
 
+    <string-array name="keepalive_f15_names">
+        <item>@string/keepalive_always</item>
+        <item>@string/keepalive_background_only</item>
+        <item>@string/keepalive_disabled</item>
+    </string-array>
+    <string-array name="keepalive_f15_values" translatable="false">
+        <item>2</item>
+        <item>1</item>
+        <item>0</item>
+    </string-array>
 </resources>

@@ -66,6 +66,10 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     // Helper: release with low-latency policy (immediate only when very near to now)
     private void releaseWithPolicy(int bufferIndex, long frameTimeNanos) {
         try {
+            if (!foreground) {
+                videoDecoder.releaseOutputBuffer(bufferIndex, false);
+                return;
+            }
             long now = System.nanoTime();
             boolean immediate = preferLowerDelays && (frameTimeNanos <= now + 300_000L);
             if (immediate) {
@@ -75,8 +79,11 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
             }
         } catch (Throwable t) {
             try {
-                // Fallback to immediate if timestamped release fails for any reason
-                videoDecoder.releaseOutputBuffer(bufferIndex, true);
+                if (!foreground) {
+                    videoDecoder.releaseOutputBuffer(bufferIndex, false);
+                } else {
+                    videoDecoder.releaseOutputBuffer(bufferIndex, true);
+                }
             } catch (Throwable ignored) {}
         }
     }
@@ -360,6 +367,13 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
 
     public void setRenderTarget(Surface renderTarget) {
         this.renderTarget = renderTarget;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && videoDecoder != null && renderTarget != null && renderTarget.isValid()) {
+            try {
+                videoDecoder.setOutputSurface(renderTarget);
+            } catch (Throwable t) {
+                LimeLog.warning("setOutputSurface failed: " + t.getMessage());
+            }
+        }
     }
 
     public MediaCodecDecoderRenderer(Activity activity, PreferenceConfiguration prefs,
@@ -1324,7 +1338,11 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                                             // ULL: present at next VSYNC (no scheduling)
                                             releaseWithPolicy(lastIndex, System.nanoTime());} else {
                                             // Smooth/Balanced: keep timestamp scheduling
-                                            videoDecoder.releaseOutputBuffer(lastIndex, nowNs);
+                                            if (!foreground) {
+                                                videoDecoder.releaseOutputBuffer(lastIndex, false);
+                                            } else {
+                                                videoDecoder.releaseOutputBuffer(lastIndex, nowNs);
+                                            }
                                         }
 
                                         lastPresentNs = nowNs;
@@ -1397,7 +1415,11 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                                             // ULL: present at next VSYNC (no scheduling)
                                             releaseWithPolicy(lastIndex, System.nanoTime());} else {
                                             // Smooth/Balanced: keep timestamp scheduling
-                                            videoDecoder.releaseOutputBuffer(lastIndex, nowNs);
+                                            if (!foreground) {
+                                                videoDecoder.releaseOutputBuffer(lastIndex, false);
+                                            } else {
+                                                videoDecoder.releaseOutputBuffer(lastIndex, nowNs);
+                                            }
                                         }
 
                                         lastPresentNs = nowNs;

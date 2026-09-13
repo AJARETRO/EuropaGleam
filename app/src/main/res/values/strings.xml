@@ -1017,4 +1017,19 @@
     <string name="dualsense_bridge_status_paired">DualSense paired; waiting for encryption…</string>
     <string name="dualsense_bridge_status_disconnected_reason">Disconnected: %1$s (0x%2$s)</string>
     <string name="dualsense_bridge_status_disconnected_code">Disconnected (0x%1$s)</string>
+    <!-- Background Streaming & Keepalive Strings -->
+    <string name="title_enable_background_streaming">Keep streaming when minimized</string>
+    <string name="summary_enable_background_streaming">Stay connected and streaming in the background without disconnecting when switching apps or minimizing</string>
+    <string name="title_enable_background_audio">Background game audio</string>
+    <string name="summary_enable_background_audio">Keep hearing game audio while EuropaGleam is running in the background</string>
+    <string name="title_keepalive_f15_mode">F15 Anti-Timeout keepalive</string>
+    <string name="summary_keepalive_f15_mode">Sends a virtual F15 keypress every 1 min (±30s) to keep host session active and prevent sleep or idle timeout</string>
+    <string name="keepalive_always">Always (Foreground &amp; Background)</string>
+    <string name="keepalive_background_only">Background only</string>
+    <string name="keepalive_disabled">Disabled</string>
+    <string name="game_menu_background_settings">Background Stream &amp; Keepalive</string>
+    <string name="notification_channel_background_streaming">Background Streaming</string>
+    <string name="notification_background_streaming_title">EuropaGleam Streaming Active</string>
+    <string name="notification_background_streaming_text">Tap to return to stream</string>
+    <string name="notification_action_disconnect">Disconnect</string>
 </resources>

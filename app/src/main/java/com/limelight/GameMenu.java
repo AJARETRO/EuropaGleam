@@ -125,6 +125,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
     private static final String ADV_CONTROLLER_KBM = "advanced_controller_kbm";
     private static final String ADV_SEND_KEYS = "advanced_send_keys";
     private static final String ADV_TOUCH_SENSITIVITY = "advanced_touch_sensitivity";
+    private static final String ADV_BACKGROUND_SETTINGS = "advanced_background_settings";
     private static final String CONTROLLER_KBM_PICK_FUNCTION_KEY = "pick_function_key";
     private static final String CONTROLLER_KBM_CONFIGURE_FLICK = "configure_directed_flick";
     private static final String CONTROLLER_KBM_ICON_LAYOUT_PREF =
@@ -449,6 +450,9 @@ public class GameMenu implements Game.GameMenuCallbacks {
         if (ADV_TOUCH_SENSITIVITY.equals(id)) {
             return R.drawable.ic_qm_touch;
         }
+        if (ADV_BACKGROUND_SETTINGS.equals(id)) {
+            return R.drawable.ic_qm_tune;
+        }
         if ("keys_esc".equals(id)) {
             return R.drawable.ic_qm_input;
         }
@@ -613,6 +617,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
                 ADV_GYRO_AIM_SETTINGS.equals(option.id) ||
                 ADV_CONTROLLER_KBM.equals(option.id) ||
                 MENU_DUALSENSE_BRIDGE.equals(option.id) ||
+                ADV_BACKGROUND_SETTINGS.equals(option.id) ||
                 ADV_SEND_KEYS.equals(option.id) ||
                 ADV_VOLUME_BUTTONS.equals(option.id);
     }
@@ -3939,12 +3944,86 @@ public class GameMenu implements Game.GameMenuCallbacks {
         }));
         options.add(new MenuOption(ADV_TOUCH_SENSITIVITY, getString(R.string.game_menu_switch_touch_sensitivity_model), true,
                 game::switchTouchSensitivity));
+        options.add(new MenuOption(ADV_BACKGROUND_SETTINGS, getString(R.string.game_menu_background_settings),
+                () -> showBackgroundSettingsMenu(device)));
         if (device != null) {
             options.addAll(device.getGameMenuOptions());
         }
         options.add(new MenuOption(MENU_CANCEL, getString(R.string.game_menu_cancel), null));
         showMenuDialog(getString(R.string.game_menu_advanced),
                 options.toArray(new MenuOption[0]), () -> showMenu(device));
+    }
+
+    private void showBackgroundSettingsMenu(GameInputDevice device) {
+        List<MenuOption> options = new ArrayList<>();
+
+        boolean bgStreaming = game.isBackgroundStreamingEnabled();
+        options.add(new MenuOption("bg_streaming_toggle",
+                getString(R.string.title_enable_background_streaming) + ": " +
+                        (bgStreaming ? "ON ✓" : "OFF"),
+                () -> {
+                    game.updateBackgroundStreamingPref(!bgStreaming);
+                    showBackgroundSettingsMenu(device);
+                }));
+
+        boolean bgAudio = game.isBackgroundAudioEnabled();
+        options.add(new MenuOption("bg_audio_toggle",
+                getString(R.string.title_enable_background_audio) + ": " +
+                        (bgAudio ? "ON ✓" : "OFF"),
+                () -> {
+                    game.updateBackgroundAudioPref(!bgAudio);
+                    showBackgroundSettingsMenu(device);
+                }));
+
+        int keepaliveMode = game.getKeepaliveF15Mode();
+        String keepaliveLabel;
+        if (keepaliveMode == PreferenceConfiguration.KEEPALIVE_DISABLED) {
+            keepaliveLabel = getString(R.string.keepalive_disabled);
+        } else if (keepaliveMode == PreferenceConfiguration.KEEPALIVE_BACKGROUND_ONLY) {
+            keepaliveLabel = getString(R.string.keepalive_background_only);
+        } else {
+            keepaliveLabel = getString(R.string.keepalive_always);
+        }
+        options.add(new MenuOption("bg_keepalive_mode",
+                getString(R.string.title_keepalive_f15_mode) + ": " + keepaliveLabel,
+                () -> showKeepaliveModeMenu(device)));
+
+        options.add(new MenuOption(MENU_CANCEL, getString(R.string.game_menu_cancel), null));
+        showMenuDialog(getString(R.string.game_menu_background_settings),
+                options.toArray(new MenuOption[0]), () -> showAdvancedMenu(device));
+    }
+
+    private void showKeepaliveModeMenu(GameInputDevice device) {
+        int currentMode = game.getKeepaliveF15Mode();
+        List<MenuOption> options = new ArrayList<>();
+
+        options.add(new MenuOption("keepalive_always",
+                getString(R.string.keepalive_always) +
+                        (currentMode == PreferenceConfiguration.KEEPALIVE_ALWAYS ? "  ✓" : ""),
+                () -> {
+                    game.updateKeepaliveModePref(PreferenceConfiguration.KEEPALIVE_ALWAYS);
+                    showBackgroundSettingsMenu(device);
+                }));
+
+        options.add(new MenuOption("keepalive_background_only",
+                getString(R.string.keepalive_background_only) +
+                        (currentMode == PreferenceConfiguration.KEEPALIVE_BACKGROUND_ONLY ? "  ✓" : ""),
+                () -> {
+                    game.updateKeepaliveModePref(PreferenceConfiguration.KEEPALIVE_BACKGROUND_ONLY);
+                    showBackgroundSettingsMenu(device);
+                }));
+
+        options.add(new MenuOption("keepalive_disabled",
+                getString(R.string.keepalive_disabled) +
+                        (currentMode == PreferenceConfiguration.KEEPALIVE_DISABLED ? "  ✓" : ""),
+                () -> {
+                    game.updateKeepaliveModePref(PreferenceConfiguration.KEEPALIVE_DISABLED);
+                    showBackgroundSettingsMenu(device);
+                }));
+
+        options.add(new MenuOption(MENU_CANCEL, getString(R.string.game_menu_cancel), null));
+        showMenuDialog(getString(R.string.title_keepalive_f15_mode),
+                options.toArray(new MenuOption[0]), () -> showBackgroundSettingsMenu(device));
     }
 
     private void showVolumeButtonModeMenu(GameInputDevice device) {

@@ -113,6 +113,13 @@ public class PreferenceConfiguration {
             "quick_menu_shortcut_modifier";
     public static final String QUICK_MENU_SHORTCUT_ACTIVATOR_PREF_STRING =
             "quick_menu_shortcut_activator";
+    public static final String ENABLE_BACKGROUND_STREAMING_PREF_STRING = "checkbox_enable_background_streaming";
+    public static final String ENABLE_BACKGROUND_AUDIO_PREF_STRING = "checkbox_enable_background_audio";
+    public static final String KEEPALIVE_F15_MODE_PREF_STRING = "list_keepalive_f15_mode";
+
+    public static final int KEEPALIVE_DISABLED = 0;
+    public static final int KEEPALIVE_BACKGROUND_ONLY = 1;
+    public static final int KEEPALIVE_ALWAYS = 2;
     public static final String GYRO_AIM_PITCH_SENSITIVITY_PREF_STRING = "gyro_aim_pitch_sensitivity";
     public static final String GYRO_AIM_SIDE_SENSITIVITY_PREF_STRING = "gyro_aim_side_sensitivity";
     public static final String GYRO_AIM_VERTICAL_SENSITIVITY_PREF_STRING = "gyro_aim_vertical_sensitivity";
@@ -439,6 +446,9 @@ public class PreferenceConfiguration {
     public String dualSenseMicrophoneSource;
     public boolean dualSenseMicrophoneEnabled;
     public boolean preventPacketLoss;
+    public boolean enableBackgroundStreaming;
+    public boolean enableBackgroundAudio;
+    public int keepaliveF15Mode;
 
     public boolean rememberZoomPan;
     public float zoomScale;
@@ -1116,6 +1126,13 @@ private static int getFramePacingValue(Context context) {
         config.dualSenseMicrophoneSource = "off".equals(storedMicrophoneSource) ?
                 DEFAULT_DUALSENSE_MICROPHONE_SOURCE : storedMicrophoneSource;
         config.preventPacketLoss = prefs.getBoolean(PREVENT_PACKET_LOSS_PREF_STRING, DEFAULT_PREVENT_PACKET_LOSS);
+        config.enableBackgroundStreaming = prefs.getBoolean(ENABLE_BACKGROUND_STREAMING_PREF_STRING, true);
+        config.enableBackgroundAudio = prefs.getBoolean(ENABLE_BACKGROUND_AUDIO_PREF_STRING, true);
+        try {
+            config.keepaliveF15Mode = Integer.parseInt(prefs.getString(KEEPALIVE_F15_MODE_PREF_STRING, "2"));
+        } catch (Exception e) {
+            config.keepaliveF15Mode = KEEPALIVE_ALWAYS;
+        }
 
         // Read custom values
         config.customResolution = prefs.getString(CUSTOM_RESOLUTION_PREF_STRING, null);

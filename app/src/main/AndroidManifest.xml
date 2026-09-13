@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.REORDER_TASKS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -58,7 +59,16 @@
         android:localeConfig="@xml/locales_config"
         android:enableOnBackInvokedCallback="false"
         android:theme="@style/AppTheme"
+        android:isGame="true"
+        android:appCategory="game"
         >
+
+        <!-- Vivo / Funtouch OS Ultra Game Mode & Esports Mode triggers -->
+        <meta-data android:name="vivo.game.mode" android:value="true" />
+        <meta-data android:name="com.vivo.gamewatch" android:value="true" />
+        <meta-data android:name="com.vivo.game.acceleration" android:value="true" />
+        <meta-data android:name="com.vivo.game.esports" android:value="true" />
+        <meta-data android:name="com.vivo.game.cube" android:value="true" />
 
         <activity
             android:name=".DualSenseBridgeActivity"
@@ -109,6 +119,7 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.GAME" />
                 <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
                 <category android:name="tv.ouya.intent.category.APP" />
@@ -211,12 +222,11 @@
         <activity
             android:name=".Game"
             android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection"
-            android:noHistory="true"
+            android:noHistory="false"
             android:supportsPictureInPicture="true"
             android:resizeableActivity="true"
             android:enableOnBackInvokedCallback="false"
             android:launchMode="singleTask"
-            android:excludeFromRecents="true"
             android:theme="@style/StreamTheme"
             android:preferMinimalPostProcessing="true">
 
@@ -282,6 +292,10 @@
                 android:resource="@xml/provider_file_paths" />
         </provider>
 
+        <service
+            android:name=".StreamKeepaliveService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 
 </manifest>

@@ -127,21 +127,21 @@ jobs:
               -dname "CN=EuropaGleam, OU=Development, O=EuropaGleam, L=Global, S=Global, C=US"
           fi
 
-          # Sign NonRoot APK (standard user APK)
-          NONROOT_APK=$(find app/build/outputs/apk/nonRoot_game/release -name "*.apk" | head -n 1)
-          if [ -f "$NONROOT_APK" ]; then
-            NONROOT_OUT="release_assets/EuropaGleam-${TAG}-nonRoot.apk"
-            $APKSIGNER sign --ks $KEYSTORE --ks-pass pass:$KS_PASS --ks-key-alias $ALIAS --key-pass pass:$KS_PASS --out "$NONROOT_OUT" "$NONROOT_APK"
-            echo "Signed and created: $NONROOT_OUT"
-          fi
+          # Sign all NonRoot APKs (standard user APKs: universal, arm64-v8a, armeabi-v7a, x86, x86_64)
+          find app/build/outputs/apk/nonRoot_game/release -type f -name "*.apk" | while read -r apk; do
+            base=$(basename "$apk" .apk | sed -E 's/app-//; s/-release//; s/-unsigned//')
+            out="release_assets/EuropaGleam-${TAG}-${base}.apk"
+            $APKSIGNER sign --ks $KEYSTORE --ks-pass pass:$KS_PASS --ks-key-alias $ALIAS --key-pass pass:$KS_PASS --out "$out" "$apk"
+            echo "Signed and created: $out"
+          done
 
-          # Sign Root APK (for rooted Android devices)
-          ROOT_APK=$(find app/build/outputs/apk/root/release -name "*.apk" | head -n 1)
-          if [ -f "$ROOT_APK" ]; then
-            ROOT_OUT="release_assets/EuropaGleam-${TAG}-root.apk"
-            $APKSIGNER sign --ks $KEYSTORE --ks-pass pass:$KS_PASS --ks-key-alias $ALIAS --key-pass pass:$KS_PASS --out "$ROOT_OUT" "$ROOT_APK"
-            echo "Signed and created: $ROOT_OUT"
-          fi
+          # Sign all Root APKs
+          find app/build/outputs/apk/root/release -type f -name "*.apk" | while read -r apk; do
+            base=$(basename "$apk" .apk | sed -E 's/app-//; s/-release//; s/-unsigned//')
+            out="release_assets/EuropaGleam-${TAG}-${base}.apk"
+            $APKSIGNER sign --ks $KEYSTORE --ks-pass pass:$KS_PASS --ks-key-alias $ALIAS --key-pass pass:$KS_PASS --out "$out" "$apk"
+            echo "Signed and created: $out"
+          done
 
           # Compute SHA-256 checksums
           cd release_assets
@@ -162,12 +162,16 @@ jobs:
           High-performance GameStream / Sunshine / Apollo client for Android based on Artemis Android Extended.
 
           ### Highlights & Features:
-          - **Native Wireless & Wired DualSense (PS5) Support**: Adaptive triggers, HD haptics, motion/gyro relay, DualSense speaker audio, and mic/headset routing.
-          - **Apollo & Sunshine Virtual Display Integration**: Seamlessly matches host resolution and aspect ratio with your client display.
-          - **Advanced Controls**: Customizable virtual on-screen controls, low-latency trackpad & mouse modes, and switchable layouts.
+          - **Target Android 12 (API 31)**: Optimized modern runtime compatibility and permissions.
+          - **Background Streaming**: Stream continues active when the app is minimized or switched away, backed by a persistent low-priority foreground service.
+          - **Hot-Swappable Background Audio**: Seamlessly listen to game audio in the background or mute audio cleanly to preserve device battery, togglable anytime in settings or the in-game quick menu.
+          - **F15 Anti-Timeout Keepalive**: Transmits virtual F15 key events at randomized 1 min (±30s) intervals to keep remote host sessions awake and prevent idle screensaver/timeout (`Always`, `Background Only`, or `Disabled`).
+          - **Game Mode & Funtouch OS Esports Integration**: Marked with `isGame="true"`, `appCategory="game"`, performance game mode config, and Vivo Esports metadata triggers.
+          - **Native Wireless DualSense (PS5) Support**: Adaptive triggers, HD haptics, motion/gyro relay, DualSense controller speaker audio, and microphone routing.
 
           ### Downloads:
-          - **`EuropaGleam-...-nonRoot.apk`**: Recommended for standard Android phones, tablets, and handheld devices.
+          - **`EuropaGleam-...-universal.apk`**: Universal build for all architectures (recommended for most devices).
+          - **`EuropaGleam-...-arm64-v8a.apk`**: Optimized 64-bit ARM build (modern phones and tablets).
           - **`EuropaGleam-...-root.apk`**: For rooted devices requiring direct low-level input capture.
 
           ### Verification:
