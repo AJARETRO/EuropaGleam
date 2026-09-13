@@ -167,7 +167,7 @@ jobs:
           - **Target Android 12 (API 31)**: Optimized modern runtime compatibility and permissions.
           - **Background Streaming**: Stream continues active when the app is minimized or switched away, backed by a persistent low-priority foreground service.
           - **Hot-Swappable Background Audio**: Seamlessly listen to game audio in the background or mute audio cleanly to preserve device battery, togglable anytime in settings or the in-game quick menu.
-          - **F15 Anti-Timeout Keepalive**: Transmits virtual F15 key events at randomized 1 min (±30s) intervals to keep remote host sessions awake and prevent idle screensaver/timeout (`Always`, `Background Only`, or `Disabled`).
+          - **Scroll Lock Anti-Timeout Keepalive**: Transmits virtual Scroll Lock pulses at randomized 1 min (±30s) intervals to keep remote host sessions awake and prevent idle screensaver/timeout (`Always`, `Background Only`, or `Disabled`).
           - **Battery Saver & Restriction Shield**: Live detection and actionable prompts for Android Battery Saver, Doze restrictions, and OEM background killers.
           - **Wi-Fi Only & Mobile Data Auto-Disconnect**: Automatically disconnects stream if Wi-Fi drops and transitions to cellular mobile data to avoid accidental high carrier usage. Can be overridden in settings or in-game menu.
           - **In-App Auto-Updater**: Instant top-bar and settings update button querying GitHub Releases API with ABI-optimized APK downloading (~38 MB ARM64) and direct installer prompt.

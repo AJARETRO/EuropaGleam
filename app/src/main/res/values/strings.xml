@@ -1022,8 +1022,8 @@
     <string name="summary_enable_background_streaming">Stay connected and streaming in the background without disconnecting when switching apps or minimizing</string>
     <string name="title_enable_background_audio">Background game audio</string>
     <string name="summary_enable_background_audio">Keep hearing game audio while EuropaGleam is running in the background</string>
-    <string name="title_keepalive_f15_mode">F15 Anti-Timeout keepalive</string>
-    <string name="summary_keepalive_f15_mode">Sends a virtual F15 keypress every 1 min (±30s) to keep host session active and prevent sleep or idle timeout</string>
+    <string name="title_keepalive_f15_mode">Scroll Lock Anti-Timeout keepalive</string>
+    <string name="summary_keepalive_f15_mode">Sends a virtual Scroll Lock pulse every 1 min (±30s) to keep host session active and prevent sleep or idle timeout</string>
     <string name="keepalive_always">Always (Foreground &amp; Background)</string>
     <string name="keepalive_background_only">Background only</string>
     <string name="keepalive_disabled">Disabled</string>

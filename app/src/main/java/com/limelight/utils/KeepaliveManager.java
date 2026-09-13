@@ -11,14 +11,15 @@ import com.limelight.preferences.PreferenceConfiguration;
 import java.util.Random;
 
 /**
- * Manages sending periodic F15 dummy keypresses to keep the host PC session
+ * Manages sending periodic Scroll Lock dummy keypresses to keep the host PC session
  * active and prevent sleep, screen saver, or idle disconnects.
  * Interval: 1 min ± 30s (randomized between 30 and 90 seconds).
+ * Uses a double-tap pulse so the host's Scroll Lock state remains unchanged.
  */
 public class KeepaliveManager {
 
-    // VK_F15 = 0x7E (126). Moonlight key prefix = 0x80.
-    private static final short VK_F15_KEYMAP = (short) ((0x80 << 8) | 0x7E);
+    // VK_SCROLL = 0x91 (145). Moonlight key prefix = 0x80.
+    private static final short VK_SCROLL_KEYMAP = (short) ((0x80 << 8) | KeyMapper.VK_SCROLL);
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
@@ -45,7 +46,7 @@ public class KeepaliveManager {
             }
 
             if (shouldSend) {
-                sendF15Keypress();
+                sendScrollLockPulse();
             }
 
             scheduleNext();
@@ -75,7 +76,7 @@ public class KeepaliveManager {
         }
         running = true;
         scheduleNext();
-        LimeLog.info("KeepaliveManager started (F15 anti-timeout active)");
+        LimeLog.info("KeepaliveManager started (Scroll Lock anti-timeout active)");
     }
 
     public synchronized void stop() {
@@ -93,29 +94,54 @@ public class KeepaliveManager {
         handler.postDelayed(keepaliveRunnable, delayMs);
     }
 
-    private void sendF15Keypress() {
+    /**
+     * Sends a double-tap pulse of Scroll Lock (Down -> Up -> Down -> Up).
+     * This registers user activity to prevent host sleep/screensaver,
+     * while immediately reverting Scroll Lock state so LEDs and apps are unaffected.
+     */
+    private void sendScrollLockPulse() {
         NvConnection conn = this.connection;
         if (conn == null) {
             return;
         }
 
         try {
-            // Send F15 Key Down
-            conn.sendKeyboardInput(VK_F15_KEYMAP, KeyboardPacket.KEY_DOWN, (byte) 0, (byte) 0);
+            // Pulse 1: Down
+            conn.sendKeyboardInput(VK_SCROLL_KEYMAP, KeyboardPacket.KEY_DOWN, (byte) 0, (byte) 0);
 
-            // Send F15 Key Up after 50ms pulse
             handler.postDelayed(() -> {
-                NvConnection c = connection;
-                if (c != null && running) {
+                NvConnection c1 = connection;
+                if (c1 != null && running) {
                     try {
-                        c.sendKeyboardInput(VK_F15_KEYMAP, KeyboardPacket.KEY_UP, (byte) 0, (byte) 0);
+                        // Pulse 1: Up
+                        c1.sendKeyboardInput(VK_SCROLL_KEYMAP, KeyboardPacket.KEY_UP, (byte) 0, (byte) 0);
                     } catch (Throwable ignored) {}
-                }
-            }, 50);
 
-            LimeLog.info("F15 keepalive sent to host PC (inBackground=" + inBackground + ")");
+                    // Pulse 2: Down (reverts toggle)
+                    handler.postDelayed(() -> {
+                        NvConnection c2 = connection;
+                        if (c2 != null && running) {
+                            try {
+                                c2.sendKeyboardInput(VK_SCROLL_KEYMAP, KeyboardPacket.KEY_DOWN, (byte) 0, (byte) 0);
+                            } catch (Throwable ignored) {}
+
+                            // Pulse 2: Up
+                            handler.postDelayed(() -> {
+                                NvConnection c3 = connection;
+                                if (c3 != null && running) {
+                                    try {
+                                        c3.sendKeyboardInput(VK_SCROLL_KEYMAP, KeyboardPacket.KEY_UP, (byte) 0, (byte) 0);
+                                    } catch (Throwable ignored) {}
+                                }
+                            }, 30);
+                        }
+                    }, 30);
+                }
+            }, 30);
+
+            LimeLog.info("Scroll Lock keepalive sent to host PC (inBackground=" + inBackground + ")");
         } catch (Throwable t) {
-            LimeLog.warning("Failed to send F15 keepalive: " + t.getMessage());
+            LimeLog.warning("Failed to send Scroll Lock keepalive: " + t.getMessage());
         }
     }
 }
