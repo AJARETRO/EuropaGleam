@@ -1,6 +1,6 @@
-# Artemis Android Extended
+# EuropaGleam
 
-This fork is based on [Artemis Android](https://github.com/ClassicOldSong/moonlight-android) and adds native DualSense streaming, advanced controller features, input customization, microphone forwarding, and quality-of-life improvements.
+EuropaGleam is a high-performance GameStream / Sunshine / Apollo client for Android, based on [Artemis Android Extended](https://github.com/Taveszfito/Artemis-Extended-Native-Wireless-DualSense-Features) and [Artemis Android](https://github.com/ClassicOldSong/moonlight-android). It features native wireless/wired DualSense support (adaptive triggers, HD haptics, motion, audio), advanced controller customization, and low-latency streaming enhancements.
 
 ---
 
