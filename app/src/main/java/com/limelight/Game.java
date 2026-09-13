@@ -65,6 +65,7 @@ import android.annotation.SuppressLint;
 import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.app.PictureInPictureParams;
 import android.app.Service;
 import android.content.ClipData;
@@ -5638,7 +5639,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             editor.apply();
         });
 
-        builder.setPositiveButton(R.string.close, (dialog, which) -> dialog.dismiss());
+        builder.setPositiveButton(android.R.string.ok, (dialog, which) -> dialog.dismiss());
         builder.show();
     }
 
