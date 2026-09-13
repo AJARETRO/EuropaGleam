@@ -360,6 +360,26 @@ public class StreamSettings extends AppCompatActivity {
                     PreferenceConfiguration.QUICK_MENU_SHORTCUT_ACTIVATOR_PREF_STRING);
             configureBatteryRestrictionsPreference();
             configureUpdatePreference();
+            configureDisconnectLogPreference();
+        }
+
+        private void configureDisconnectLogPreference() {
+            Preference pref = findPreference("pref_last_disconnect_log");
+            if (pref == null || getContext() == null) {
+                return;
+            }
+            com.limelight.utils.SessionDiagnostics diag = com.limelight.utils.SessionDiagnostics.getInstance();
+            diag.loadFromPreferences(getContext());
+            String reason = diag.getLastDisconnectReason();
+            if (!reason.isEmpty() && !reason.startsWith("No recent")) {
+                pref.setSummary(getString(R.string.summary_last_disconnect_log) + "\n⚠️ Last: " + reason);
+            }
+            pref.setOnPreferenceClickListener(p -> {
+                if (getActivity() != null) {
+                    com.limelight.utils.SessionDiagnostics.showDiagnosticsDialog(getActivity());
+                }
+                return true;
+            });
         }
 
         private void configureUpdatePreference() {

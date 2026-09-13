@@ -146,6 +146,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private int consecutiveCrashCount;
     private String glRenderer;
     private boolean foreground = true;
+    private volatile boolean needsIdrFrame = false;
+    private volatile long lastIdrRequestTimeMs = 0;
     private PerfOverlayListener perfListener;
 
     private static final int CR_MAX_TRIES = 10;
@@ -370,10 +372,12 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && videoDecoder != null && renderTarget != null && renderTarget.isValid()) {
             try {
                 videoDecoder.setOutputSurface(renderTarget);
+                LimeLog.info("setOutputSurface attached successfully: " + renderTarget);
             } catch (Throwable t) {
                 LimeLog.warning("setOutputSurface failed: " + t.getMessage());
             }
         }
+        needsIdrFrame = true;
     }
 
     public MediaCodecDecoderRenderer(Activity activity, PreferenceConfiguration prefs,
@@ -536,6 +540,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
 
     public void notifyVideoForeground() {
         foreground = true;
+        needsIdrFrame = true;
+        LimeLog.info("Video marked foreground -> requested IDR keyframe");
     }
 
     public void notifyVideoBackground() {
@@ -1782,11 +1788,22 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
             activeWindowVideoStats.frameLossEvents++;
         }
 
-        // Reset CSD data for each IDR frame
-        if (lastFrameNumber != frameNumber && frameType == MoonBridge.FRAME_TYPE_IDR) {
-            vpsBuffers.clear();
-            spsBuffers.clear();
-            ppsBuffers.clear();
+        // Reset CSD data for each IDR frame, and clear needsIdrFrame
+        if (frameType == MoonBridge.FRAME_TYPE_IDR) {
+            needsIdrFrame = false;
+            lastIdrRequestTimeMs = 0;
+            if (lastFrameNumber != frameNumber) {
+                vpsBuffers.clear();
+                spsBuffers.clear();
+                ppsBuffers.clear();
+            }
+        } else if (needsIdrFrame) {
+            long nowMs = SystemClock.uptimeMillis();
+            if (nowMs - lastIdrRequestTimeMs > 250) {
+                lastIdrRequestTimeMs = nowMs;
+                LimeLog.info("Requesting IDR keyframe from host after returning to foreground");
+                return MoonBridge.DR_NEED_IDR;
+            }
         }
 
         lastFrameNumber = frameNumber;

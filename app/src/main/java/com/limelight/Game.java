@@ -344,6 +344,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     public static final String EXTRA_FORCE_RELAUNCH = "ForceRelaunch";
     public static final String EXTRA_SERVER_COMMANDS = "ServerCommands";
     public static final String EXTRA_DISPLAY_ID = "DisplayID";
+    public static final String EXTRA_RECONNECT_ATTEMPT = "ReconnectAttempt";
 
     public static final String CLIPBOARD_IDENTIFIER = "ArtemisStreaming";
 
@@ -916,6 +917,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 new ComputerDetails.AddressTuple(host, port),
                 httpsPort, uniqueId, config,
                 PlatformBinding.getCryptoProvider(this), serverCert);
+        com.limelight.utils.SessionDiagnostics.getInstance().onSessionStart(
+                this, host, appName, displayWidth, displayHeight, (int) prefConfig.fps);
         controllerHandler = new ControllerHandler(this, conn, this, prefConfig);
         keyboardTranslator = new KeyboardTranslator(prefConfig);
 
@@ -2047,7 +2050,14 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     protected void onPause() {
-        if (isFinishing() || !prefConfig.enableBackgroundStreaming) {
+        if (prefConfig != null && prefConfig.enableBackgroundStreaming) {
+            isInBackground = true;
+            if (keepaliveManager != null) {
+                keepaliveManager.setInBackground(true);
+            }
+        }
+
+        if (isFinishing() || prefConfig == null || !prefConfig.enableBackgroundStreaming) {
             // Stop any further input device notifications before we lose focus (and pointer capture)
             if (controllerHandler != null) {
                 controllerHandler.stop();
@@ -2071,15 +2081,20 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             }
             com.limelight.binding.audio.AndroidAudioRenderer.setMuted(false);
             StreamKeepaliveService.stop(this);
-
-            if (decoderRenderer != null) {
-                decoderRenderer.notifyVideoForeground();
-                if (streamContainer != null && streamContainer.getSurface() != null) {
-                    decoderRenderer.setRenderTarget(streamContainer.getSurface());
-                }
-            }
-
             setInputGrabState(true);
+        }
+
+        // Always re-engage video renderer and re-attach active surface
+        if (decoderRenderer != null) {
+            decoderRenderer.notifyVideoForeground();
+            if (streamContainer != null && streamContainer.getSurface() != null && streamContainer.getSurface().isValid()) {
+                decoderRenderer.setRenderTarget(streamContainer.getSurface());
+            }
+        }
+
+        if (streamContainer != null) {
+            streamContainer.requestLayout();
+            streamContainer.invalidate();
         }
     }
 
@@ -2240,13 +2255,35 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
         hasTriggeredMobileDisconnect = true;
         LimeLog.info("Auto-disconnecting stream: switched to cellular / mobile data");
+
+        com.limelight.utils.SessionDiagnostics.getInstance().onDisconnected(
+                this,
+                getString(R.string.toast_disconnected_switched_to_mobile_data),
+                0,
+                "CELLULAR_DISCONNECT_GUARD"
+        );
+
         runOnUiThread(() -> {
-            Toast.makeText(getApplicationContext(),
-                    R.string.toast_disconnected_switched_to_mobile_data,
-                    Toast.LENGTH_LONG).show();
             StreamKeepaliveService.notifyMobileDataDisconnect(Game.this);
             stopConnection();
-            finish();
+
+            if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+                return;
+            }
+
+            new AlertDialog.Builder(Game.this)
+                    .setTitle(R.string.mobile_data_disconnected_title)
+                    .setMessage(R.string.mobile_data_disconnected_message)
+                    .setPositiveButton(R.string.mobile_data_reconnect_button, (dialog, which) -> {
+                        updateDisconnectOnMobileDataPref(false);
+                        reconnectStream(1);
+                    })
+                    .setNeutralButton(R.string.view_diagnostics_button, (dialog, which) -> {
+                        com.limelight.utils.SessionDiagnostics.showDiagnosticsDialog(Game.this);
+                    })
+                    .setNegativeButton(R.string.game_menu_cancel, (dialog, which) -> finish())
+                    .setCancelable(false)
+                    .show();
         });
     }
 
@@ -4274,7 +4311,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // Perform a connection test if the failure could be due to a blocked port
         // This does network I/O, so don't do it on the main thread.
         final int portFlags = MoonBridge.getPortFlagsFromTerminationErrorCode(errorCode);
-        final int portTestResult = MoonBridge.testClientConnectivity(ServerHelper.CONNECTION_TEST_SERVER,443, portFlags);
+        final int portTestResult = MoonBridge.testClientConnectivity(ServerHelper.CONNECTION_TEST_SERVER, 443, portFlags);
 
         runOnUiThread(new Runnable() {
             @Override
@@ -4342,15 +4379,132 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                                     MoonBridge.stringifyPortFlags(portFlags, "\n");
                         }
 
-                        Dialog.displayDialog(Game.this, getResources().getString(R.string.conn_terminated_title),
-                                message, true);
+                        // Record in SessionDiagnostics
+                        com.limelight.utils.SessionDiagnostics.getInstance().onDisconnected(
+                                Game.this,
+                                message,
+                                errorCode,
+                                "PORT_FLAGS: " + portFlags + ", TEST_RESULT: " + portTestResult
+                        );
+
+                        // Check auto-reconnect eligibility
+                        boolean isWifi = com.limelight.utils.NetHelper.isWifiConnected(Game.this);
+                        int reconnectAttempt = getIntent().getIntExtra(EXTRA_RECONNECT_ATTEMPT, 0);
+                        boolean autoReconnectEnabled = prefConfig != null && prefConfig.autoReconnectWifi;
+
+                        if (autoReconnectEnabled && isWifi && reconnectAttempt < 3 && !hasTriggeredMobileDisconnect) {
+                            showAutoReconnectCountdownDialog(reconnectAttempt + 1, message);
+                        } else {
+                            showConnectionTerminatedDialog(message, reconnectAttempt, portFlags, portTestResult);
+                        }
                     }
                     else {
+                        com.limelight.utils.SessionDiagnostics.getInstance().onDisconnected(
+                                Game.this,
+                                "Session closed gracefully by user or host PC",
+                                errorCode,
+                                "NORMAL_SHUTDOWN"
+                        );
                         finish();
                     }
                 }
             }
         });
+    }
+
+    private void reconnectStream(int attempt) {
+        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
+        com.limelight.utils.SessionDiagnostics.getInstance().recordEvent("RECONNECT", "Initiating reconnect attempt " + attempt + " of 3");
+        Intent reconnectIntent = new Intent(getIntent());
+        reconnectIntent.putExtra(EXTRA_RECONNECT_ATTEMPT, attempt);
+        finish();
+        startActivity(reconnectIntent);
+        overridePendingTransition(0, 0);
+    }
+
+    private void showAutoReconnectCountdownDialog(final int nextAttempt, final String reason) {
+        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
+
+        final int COUNTDOWN_SECONDS = 3;
+        final AlertDialog[] dialogHolder = new AlertDialog[1];
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(Game.this);
+        builder.setTitle(R.string.reconnect_dialog_title);
+        builder.setMessage(getString(R.string.reconnect_countdown_message, reason, COUNTDOWN_SECONDS, nextAttempt, 3));
+
+        builder.setPositiveButton(R.string.reconnect_now_button, (dialog, which) -> {
+            reconnectStream(nextAttempt);
+        });
+
+        builder.setNeutralButton(R.string.view_diagnostics_button, (dialog, which) -> {
+            com.limelight.utils.SessionDiagnostics.showDiagnosticsDialog(Game.this);
+        });
+
+        builder.setNegativeButton(R.string.game_menu_cancel, (dialog, which) -> finish());
+        builder.setCancelable(false);
+
+        dialogHolder[0] = builder.create();
+        dialogHolder[0].show();
+
+        new android.os.CountDownTimer(COUNTDOWN_SECONDS * 1000L, 1000L) {
+            int secondsLeft = COUNTDOWN_SECONDS;
+
+            @Override
+            public void onTick(long millisUntilFinished) {
+                secondsLeft--;
+                if (dialogHolder[0] != null && dialogHolder[0].isShowing() && !isFinishing()) {
+                    dialogHolder[0].setMessage(getString(R.string.reconnect_countdown_message, reason, secondsLeft, nextAttempt, 3));
+                }
+            }
+
+            @Override
+            public void onFinish() {
+                if (dialogHolder[0] != null && dialogHolder[0].isShowing() && !isFinishing()) {
+                    try {
+                        dialogHolder[0].dismiss();
+                    } catch (Exception ignored) {}
+                    reconnectStream(nextAttempt);
+                }
+            }
+        }.start();
+    }
+
+    private void showConnectionTerminatedDialog(String reason, int attempt, int portFlags, int portTestResult) {
+        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
+
+        String title = (attempt >= 3) ? getString(R.string.reconnect_failed_title) : getString(R.string.conn_terminated_title);
+        String message = (attempt >= 3) ?
+                getString(R.string.reconnect_failed_message, 3, reason) :
+                reason;
+
+        if (portFlags != 0) {
+            message += "\n\n" + getString(R.string.check_ports_msg) + "\n" +
+                    MoonBridge.stringifyPortFlags(portFlags, "\n");
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(Game.this);
+        builder.setTitle(title);
+        builder.setMessage(message);
+
+        if (com.limelight.utils.NetHelper.isWifiConnected(Game.this)) {
+            builder.setPositiveButton(R.string.reconnect_retry_button, (dialog, which) -> {
+                reconnectStream(1);
+            });
+        }
+
+        builder.setNeutralButton(R.string.view_diagnostics_button, (dialog, which) -> {
+            com.limelight.utils.SessionDiagnostics.showDiagnosticsDialog(Game.this);
+        });
+
+        builder.setNegativeButton(R.string.game_menu_cancel, (dialog, which) -> finish());
+        builder.setCancelable(false);
+        builder.show();
     }
 
     @Override
@@ -4613,6 +4767,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         LimeLog.info("surfaceChanged-->"+width+" x "+height + "----"+displayWidth+" x "+displayHeight);
 
         panZoomHandler.handleSurfaceChange();
+
+        if (decoderRenderer != null && holder.getSurface() != null && holder.getSurface().isValid()) {
+            decoderRenderer.setRenderTarget(holder.getSurface());
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!isInPictureInPictureMode()) {

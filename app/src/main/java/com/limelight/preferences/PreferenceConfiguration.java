@@ -118,6 +118,8 @@ public class PreferenceConfiguration {
     public static final String KEEPALIVE_F15_MODE_PREF_STRING = "list_keepalive_f15_mode";
     public static final String DISCONNECT_ON_MOBILE_DATA_PREF_STRING = "checkbox_disconnect_on_mobile_data";
     public static final boolean DEFAULT_DISCONNECT_ON_MOBILE_DATA = true;
+    public static final String AUTO_RECONNECT_WIFI_PREF_STRING = "checkbox_auto_reconnect_wifi";
+    public static final boolean DEFAULT_AUTO_RECONNECT_WIFI = true;
 
     public static final int KEEPALIVE_DISABLED = 0;
     public static final int KEEPALIVE_BACKGROUND_ONLY = 1;
@@ -452,6 +454,7 @@ public class PreferenceConfiguration {
     public boolean enableBackgroundAudio;
     public int keepaliveF15Mode;
     public boolean disconnectOnMobileData;
+    public boolean autoReconnectWifi;
 
     public boolean rememberZoomPan;
     public float zoomScale;
@@ -1132,6 +1135,7 @@ private static int getFramePacingValue(Context context) {
         config.enableBackgroundStreaming = prefs.getBoolean(ENABLE_BACKGROUND_STREAMING_PREF_STRING, true);
         config.enableBackgroundAudio = prefs.getBoolean(ENABLE_BACKGROUND_AUDIO_PREF_STRING, true);
         config.disconnectOnMobileData = prefs.getBoolean(DISCONNECT_ON_MOBILE_DATA_PREF_STRING, DEFAULT_DISCONNECT_ON_MOBILE_DATA);
+        config.autoReconnectWifi = prefs.getBoolean(AUTO_RECONNECT_WIFI_PREF_STRING, DEFAULT_AUTO_RECONNECT_WIFI);
         try {
             config.keepaliveF15Mode = Integer.parseInt(prefs.getString(KEEPALIVE_F15_MODE_PREF_STRING, "2"));
         } catch (Exception e) {

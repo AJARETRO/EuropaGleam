@@ -140,6 +140,7 @@ public class KeepaliveManager {
             }, 30);
 
             LimeLog.info("Scroll Lock keepalive sent to host PC (inBackground=" + inBackground + ")");
+            SessionDiagnostics.getInstance().onKeepalive("Scroll Lock", 60);
         } catch (Throwable t) {
             LimeLog.warning("Failed to send Scroll Lock keepalive: " + t.getMessage());
         }

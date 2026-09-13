@@ -86,5 +86,9 @@ public class NetHelper {
         }
         return false;
     }
+
+    public static boolean isWifiConnected(Context context) {
+        return isWifiOrEthernet(context);
+    }
 }
 

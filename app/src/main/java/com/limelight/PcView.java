@@ -225,6 +225,11 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
             updateButton.setOnClickListener(v ->
                     com.limelight.utils.UpdateHelper.checkForUpdates(PcView.this, true));
         }
+        ImageButton diagnosticsButton = findViewById(R.id.diagnosticsButton);
+        if (diagnosticsButton != null) {
+            diagnosticsButton.setOnClickListener(v ->
+                    com.limelight.utils.SessionDiagnostics.showDiagnosticsDialog(PcView.this));
+        }
         com.limelight.utils.UpdateHelper.checkForUpdates(PcView.this, false);
         profilesButton.setOnClickListener(new OnClickListener() {
             @Override

@@ -1064,6 +1064,17 @@
             android:summary="@string/summary_disconnect_on_mobile_data"
             android:title="@string/title_disconnect_on_mobile_data"
             app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_auto_reconnect_wifi"
+            android:summary="@string/summary_auto_reconnect_wifi"
+            android:title="@string/title_auto_reconnect_wifi"
+            app:iconSpaceReserved="false" />
+        <Preference
+            android:key="pref_last_disconnect_log"
+            android:summary="@string/summary_last_disconnect_log"
+            android:title="@string/title_last_disconnect_log"
+            app:iconSpaceReserved="false" />
         <Preference
             android:key="pref_battery_restrictions_info"
             android:summary="@string/battery_status_unrestricted"

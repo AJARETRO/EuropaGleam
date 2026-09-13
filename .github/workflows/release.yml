@@ -69,23 +69,10 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Release APKs
+      - name: Determine Release Metadata
+        id: meta
         run: |
-          ./gradlew assembleNonRoot_gameRelease assembleRootRelease -x lint --stacktrace
-
-      - name: Sign & Prepare Release Assets
-        id: prepare_assets
-        run: |
-          mkdir -p release_assets
-
-          # Extract version from app/build.gradle
-          VERSION=$(grep -E 'versionName' app/build.gradle | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
-          if [ -z "$VERSION" ]; then
-            VERSION="20.2.6"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-          # Determine Tag Name
+          VERSION="20.2.6"
           INPUT_TAG="${{ inputs.tag_name }}"
           if [ -n "$INPUT_TAG" ]; then
             TAG="$INPUT_TAG"
@@ -95,8 +82,8 @@ jobs:
             TAG="v${VERSION}-europa.${{ github.run_number }}"
           fi
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
+          echo "APP_VERSION=${TAG#v}" >> $GITHUB_ENV
 
-          # Determine Release Title
           INPUT_TITLE="${{ inputs.release_title }}"
           if [ -n "$INPUT_TITLE" ]; then
             TITLE="$INPUT_TITLE"
@@ -104,6 +91,17 @@ jobs:
             TITLE="EuropaGleam $TAG"
           fi
           echo "RELEASE_TITLE=$TITLE" >> $GITHUB_ENV
+
+      - name: Build Release APKs
+        run: |
+          ./gradlew assembleNonRoot_gameRelease assembleRootRelease -PversionName="${{ env.APP_VERSION }}" -x lint --stacktrace
+
+      - name: Sign & Prepare Release Assets
+        id: prepare_assets
+        run: |
+          mkdir -p release_assets
+          TAG="${{ env.RELEASE_TAG }}"
+          TITLE="${{ env.RELEASE_TITLE }}"
 
           # Find apksigner
           BUILD_TOOLS_DIR=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
@@ -170,6 +168,9 @@ jobs:
           - **Scroll Lock Anti-Timeout Keepalive**: Transmits virtual Scroll Lock pulses at randomized 1 min (±30s) intervals to keep remote host sessions awake and prevent idle screensaver/timeout (`Always`, `Background Only`, or `Disabled`).
           - **Battery Saver & Restriction Shield**: Live detection and actionable prompts for Android Battery Saver, Doze restrictions, and OEM background killers.
           - **Wi-Fi Only & Mobile Data Auto-Disconnect**: Automatically disconnects stream if Wi-Fi drops and transitions to cellular mobile data to avoid accidental high carrier usage. Can be overridden in settings or in-game menu.
+          - **Session Disconnect Diagnostics & Event Logger**: Full timestamped log of stream events, keepalive pulses, and exact disconnect reasons with a top-bar diagnostic viewer and one-tap clipboard export.
+          - **Smart Wi-Fi Auto-Reconnect**: Automatically reconnects with a sleek 3-second countdown if disconnected due to temporary network blips while on Wi-Fi.
+          - **Screen Wakeup & Idle Fix (Black Screen Resolved)**: Immediate IDR keyframe request and surface re-synchronization when resuming from screen lock or background, preventing black/frozen frames.
           - **In-App Auto-Updater**: Instant top-bar and settings update button querying GitHub Releases API with ABI-optimized APK downloading (~38 MB ARM64) and direct installer prompt.
           - **Game Mode & Funtouch OS Esports Integration**: Marked with `isGame="true"`, `appCategory="game"`, performance game mode config, and Vivo Esports metadata triggers.
           - **Native Wireless DualSense (PS5) Support**: Adaptive triggers, HD haptics, motion/gyro relay, DualSense controller speaker audio, and microphone routing.

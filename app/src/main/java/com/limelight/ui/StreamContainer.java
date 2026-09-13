@@ -234,6 +234,10 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
+        if (renderMode == StreamMode.MODE_2D && holder.getSurface() != null) {
+            mCurrentSurface = holder.getSurface();
+            isSurfaceReady = true;
+        }
         game.surfaceCreated(holder);
     }
     @Override

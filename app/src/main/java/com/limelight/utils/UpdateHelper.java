@@ -134,7 +134,9 @@ public class UpdateHelper {
     }
 
     public static boolean isNewerVersion(String latestTag, String currentVersion) {
-        if (latestTag == null || latestTag.isEmpty()) return false;
+        if (latestTag == null || latestTag.trim().isEmpty()) return false;
+        if (currentVersion == null || currentVersion.trim().isEmpty()) return true;
+
         String cleanLatest = latestTag.replaceAll("^[vV]", "").trim();
         String cleanCurrent = currentVersion.replaceAll("^[vV]", "").trim();
 
@@ -142,27 +144,67 @@ public class UpdateHelper {
             return false;
         }
 
-        // Compare version tokens
-        String[] latestParts = cleanLatest.split("[-._]");
-        String[] currentParts = cleanCurrent.split("[-._]");
+        // Split into base version and suffix using '-'
+        String[] lSplit = cleanLatest.split("-", 2);
+        String[] cSplit = cleanCurrent.split("-", 2);
 
-        int len = Math.max(latestParts.length, currentParts.length);
-        for (int i = 0; i < len; i++) {
-            String lPart = i < latestParts.length ? latestParts[i] : "0";
-            String cPart = i < currentParts.length ? currentParts[i] : "0";
+        String lBase = lSplit[0];
+        String cBase = cSplit[0];
 
-            try {
-                int lNum = Integer.parseInt(lPart.replaceAll("\\D", ""));
-                int cNum = Integer.parseInt(cPart.replaceAll("\\D", ""));
-                if (lNum > cNum) return true;
-                if (lNum < cNum) return false;
-            } catch (Exception ignored) {
-                int cmp = lPart.compareToIgnoreCase(cPart);
-                if (cmp > 0) return true;
-                if (cmp < 0) return false;
-            }
+        // 1. Compare numeric semver base (e.g. 20.2.6 vs 20.2.7)
+        String[] lTokens = lBase.split("\\.");
+        String[] cTokens = cBase.split("\\.");
+        int maxTokens = Math.max(lTokens.length, cTokens.length);
+
+        for (int i = 0; i < maxTokens; i++) {
+            int lVal = i < lTokens.length ? parseSafeInt(lTokens[i]) : 0;
+            int cVal = i < cTokens.length ? parseSafeInt(cTokens[i]) : 0;
+            if (lVal > cVal) return true;
+            if (lVal < cVal) return false;
         }
-        return false;
+
+        // 2. Base versions are identical (e.g. 20.2.6 == 20.2.6)
+        String lSuffix = lSplit.length > 1 ? lSplit[1] : "";
+        String cSuffix = cSplit.length > 1 ? cSplit[1] : "";
+
+        if (lSuffix.equalsIgnoreCase(cSuffix)) {
+            return false;
+        }
+
+        // If current build has no suffix (e.g. "20.2.6") and remote is "20.2.6-europaX",
+        // don't harass the user with false positive updates on base releases.
+        if (cSuffix.isEmpty() && !lSuffix.isEmpty()) {
+            return false;
+        }
+
+        int lNum = extractTrailingNumber(lSuffix);
+        int cNum = extractTrailingNumber(cSuffix);
+
+        if (lNum != -1 && cNum != -1) {
+            return lNum > cNum;
+        }
+
+        return lSuffix.compareToIgnoreCase(cSuffix) > 0;
+    }
+
+    private static int parseSafeInt(String s) {
+        if (s == null) return 0;
+        try {
+            return Integer.parseInt(s.replaceAll("\\D+", ""));
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static int extractTrailingNumber(String s) {
+        if (s == null || s.isEmpty()) return -1;
+        String digits = s.replaceAll("\\D+", "");
+        if (digits.isEmpty()) return -1;
+        try {
+            return Integer.parseInt(digits);
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     private static void pickBestAsset(ReleaseInfo info, JSONArray assets) {

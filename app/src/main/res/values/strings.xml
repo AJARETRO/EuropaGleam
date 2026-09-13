@@ -1069,4 +1069,23 @@
     <string name="update_download_size">Download Size: ~%d MB</string>
     <string name="update_grant_install_permission">Please allow EuropaGleam to install updates</string>
     <string name="update_button_desc">Check for Updates</string>
+    <!-- Disconnect Diagnostics & Auto-Reconnect Strings -->
+    <string name="title_auto_reconnect_wifi">Auto-reconnect on Wi-Fi</string>
+    <string name="summary_auto_reconnect_wifi">Automatically reconnect to host PC if disconnected due to temporary network issues while on Wi-Fi</string>
+    <string name="title_last_disconnect_log">Session Disconnect Diagnostics</string>
+    <string name="summary_last_disconnect_log">View detailed logs, network events, and reason for the last stream disconnect</string>
+    <string name="reconnect_dialog_title">⚡ Reconnecting to PC…</string>
+    <string name="reconnect_countdown_message">Reason: %1$s\n\nWi-Fi is active. Reconnecting in %2$ds… (Attempt %3$d of %4$d)</string>
+    <string name="reconnect_now_button">Reconnect Now</string>
+    <string name="reconnect_failed_title">Connection Lost</string>
+    <string name="reconnect_failed_message">Unable to reconnect after %1$d attempts.\n\nReason: %2$s</string>
+    <string name="reconnect_retry_button">Try Again</string>
+    <string name="view_diagnostics_button">View Disconnect Log</string>
+    <string name="diagnostics_dialog_title">🛡️ Session Disconnect Diagnostics</string>
+    <string name="diagnostics_copy_button">Copy Log to Clipboard</string>
+    <string name="diagnostics_copied_toast">Diagnostic log copied to clipboard</string>
+    <string name="diagnostics_no_logs">No session disconnect logs recorded yet.</string>
+    <string name="mobile_data_disconnected_title">📶 Mobile Data Guard Activated</string>
+    <string name="mobile_data_disconnected_message">Stream was disconnected because Wi-Fi dropped and switched to cellular mobile data.\n\nEuropaGleam protected your cellular plan. You can allow mobile data streaming to continue or exit.</string>
+    <string name="mobile_data_reconnect_button">Allow Mobile Data &amp; Reconnect</string>
 </resources>
