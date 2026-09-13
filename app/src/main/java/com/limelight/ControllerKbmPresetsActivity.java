@@ -132,7 +132,7 @@ public class ControllerKbmPresetsActivity extends AppCompatActivity {
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("application/json");
-            intent.putExtra(Intent.EXTRA_TITLE, safeName + ".artemis-kbm.json");
+            intent.putExtra(Intent.EXTRA_TITLE, safeName + ".europagleam-kbm.json");
             startActivityForResult(intent, REQUEST_EXPORT_PRESET);
         }
         catch (Exception e) {

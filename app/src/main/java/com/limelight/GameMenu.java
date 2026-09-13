@@ -127,6 +127,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
     private static final String ADV_SEND_KEYS = "advanced_send_keys";
     private static final String ADV_TOUCH_SENSITIVITY = "advanced_touch_sensitivity";
     private static final String ADV_BACKGROUND_SETTINGS = "advanced_background_settings";
+    private static final String ADV_CONTROLLER_REMAPPING = "advanced_controller_remapping";
     private static final String CONTROLLER_KBM_PICK_FUNCTION_KEY = "pick_function_key";
     private static final String CONTROLLER_KBM_CONFIGURE_FLICK = "configure_directed_flick";
     private static final String CONTROLLER_KBM_ICON_LAYOUT_PREF =
@@ -3417,7 +3418,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("application/json");
-            intent.putExtra(Intent.EXTRA_TITLE, safeName + ".artemis-kbm.json");
+            intent.putExtra(Intent.EXTRA_TITLE, safeName + ".europagleam-kbm.json");
             game.startActivityForResult(intent, REQUEST_CODE_EXPORT_KBM_PRESET);
         }
         catch (Exception e) {
@@ -3951,6 +3952,10 @@ public class GameMenu implements Game.GameMenuCallbacks {
                 game::switchTouchSensitivity));
         options.add(new MenuOption(ADV_BACKGROUND_SETTINGS, getString(R.string.game_menu_background_settings),
                 () -> showBackgroundSettingsMenu(device)));
+        options.add(new MenuOption(ADV_CONTROLLER_REMAPPING, getString(R.string.game_menu_controller_remapping), () -> {
+            hideMenu();
+            game.showControllerRemappingDialog();
+        }));
         if (device != null) {
             options.addAll(device.getGameMenuOptions());
         }

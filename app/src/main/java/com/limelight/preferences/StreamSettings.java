@@ -1158,7 +1158,7 @@ public class StreamSettings extends AppCompatActivity {
 
                         try {
                             File cacheDir = context.getCacheDir();
-                            File logFile = new File(cacheDir, "artemistics_logs.txt");
+                            File logFile = new File(cacheDir, "europagleam_logs.txt");
                             try (FileOutputStream fos = new FileOutputStream(logFile)) {
                                 fos.write(logs.getBytes(StandardCharsets.UTF_8));
                             }

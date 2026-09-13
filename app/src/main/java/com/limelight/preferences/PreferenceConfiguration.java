@@ -91,6 +91,15 @@ public class PreferenceConfiguration {
     private static final String VIBRATE_FALLBACK_PREF_STRING = "checkbox_vibrate_fallback";
     private static final String VIBRATE_FALLBACK_STRENGTH_PREF_STRING = "seekbar_vibrate_fallback_strength";
     private static final String FLIP_FACE_BUTTONS_PREF_STRING = "checkbox_flip_face_buttons";
+    public static final String SWAP_AB_PREF_STRING = "checkbox_swap_ab";
+    public static final String SWAP_XY_PREF_STRING = "checkbox_swap_xy";
+    public static final String SWAP_BUMPERS_PREF_STRING = "checkbox_swap_bumpers";
+    public static final String SWAP_TRIGGERS_PREF_STRING = "checkbox_swap_triggers";
+    public static final String SWAP_STICKS_PREF_STRING = "checkbox_swap_sticks";
+    public static final String INVERT_LEFT_STICK_Y_PREF_STRING = "checkbox_invert_left_stick_y";
+    public static final String INVERT_RIGHT_STICK_Y_PREF_STRING = "checkbox_invert_right_stick_y";
+    public static final String ONSCREEN_MACRO_DOCK_PREF_STRING = "checkbox_onscreen_macro_dock";
+    public static final String ALLOW_ONSCREEN_WITH_GAMEPAD_PREF_STRING = "checkbox_allow_onscreen_with_gamepad";
 //    static final String TOUCHSCREEN_TRACKPAD_PREF_STRING = "checkbox_touchscreen_trackpad";
     private static final String LATENCY_TOAST_PREF_STRING = "checkbox_enable_post_stream_toast";
     private static final String FRAME_PACING_PREF_STRING = "frame_pacing";
@@ -229,6 +238,15 @@ public class PreferenceConfiguration {
     private static final boolean DEFAULT_VIBRATE_FALLBACK = false;
     private static final int DEFAULT_VIBRATE_FALLBACK_STRENGTH = 100;
     private static final boolean DEFAULT_FLIP_FACE_BUTTONS = false;
+    private static final boolean DEFAULT_SWAP_AB = false;
+    private static final boolean DEFAULT_SWAP_XY = false;
+    private static final boolean DEFAULT_SWAP_BUMPERS = false;
+    private static final boolean DEFAULT_SWAP_TRIGGERS = false;
+    private static final boolean DEFAULT_SWAP_STICKS = false;
+    private static final boolean DEFAULT_INVERT_LEFT_STICK_Y = false;
+    private static final boolean DEFAULT_INVERT_RIGHT_STICK_Y = false;
+    private static final boolean DEFAULT_ONSCREEN_MACRO_DOCK = true;
+    private static final boolean DEFAULT_ALLOW_ONSCREEN_WITH_GAMEPAD = true;
     private static final boolean DEFAULT_TOUCHSCREEN_TRACKPAD = true;
     private static final String DEFAULT_AUDIO_CONFIG = "2"; // Stereo
     private static final boolean DEFAULT_LATENCY_TOAST = false;
@@ -311,6 +329,8 @@ public class PreferenceConfiguration {
     public String language;
     public int renderMode;
     public boolean smallIconMode, multiController, usbDriver, flipFaceButtons;
+    public boolean swapAB, swapXY, swapBumpers, swapTriggers, swapSticks, invertLeftStickY, invertRightStickY;
+    public boolean onscreenMacroDock, allowOnscreenWithGamepad;
     public String volumeButtonMode;
     public boolean onscreenController;
     public boolean hideOSCWhenHasGamepad;
@@ -1048,6 +1068,15 @@ private static int getFramePacingValue(Context context) {
         config.vibrateFallbackToDevice = prefs.getBoolean(VIBRATE_FALLBACK_PREF_STRING, DEFAULT_VIBRATE_FALLBACK);
         config.vibrateFallbackToDeviceStrength = prefs.getInt(VIBRATE_FALLBACK_STRENGTH_PREF_STRING, DEFAULT_VIBRATE_FALLBACK_STRENGTH);
         config.flipFaceButtons = prefs.getBoolean(FLIP_FACE_BUTTONS_PREF_STRING, DEFAULT_FLIP_FACE_BUTTONS);
+        config.swapAB = prefs.getBoolean(SWAP_AB_PREF_STRING, DEFAULT_SWAP_AB);
+        config.swapXY = prefs.getBoolean(SWAP_XY_PREF_STRING, DEFAULT_SWAP_XY);
+        config.swapBumpers = prefs.getBoolean(SWAP_BUMPERS_PREF_STRING, DEFAULT_SWAP_BUMPERS);
+        config.swapTriggers = prefs.getBoolean(SWAP_TRIGGERS_PREF_STRING, DEFAULT_SWAP_TRIGGERS);
+        config.swapSticks = prefs.getBoolean(SWAP_STICKS_PREF_STRING, DEFAULT_SWAP_STICKS);
+        config.invertLeftStickY = prefs.getBoolean(INVERT_LEFT_STICK_Y_PREF_STRING, DEFAULT_INVERT_LEFT_STICK_Y);
+        config.invertRightStickY = prefs.getBoolean(INVERT_RIGHT_STICK_Y_PREF_STRING, DEFAULT_INVERT_RIGHT_STICK_Y);
+        config.onscreenMacroDock = prefs.getBoolean(ONSCREEN_MACRO_DOCK_PREF_STRING, DEFAULT_ONSCREEN_MACRO_DOCK);
+        config.allowOnscreenWithGamepad = prefs.getBoolean(ALLOW_ONSCREEN_WITH_GAMEPAD_PREF_STRING, DEFAULT_ALLOW_ONSCREEN_WITH_GAMEPAD);
         config.volumeButtonMode = prefs.getString(VOLUME_BUTTON_MODE_PREF_STRING, DEFAULT_VOLUME_BUTTON_MODE);
 //        config.touchscreenTrackpad = prefs.getBoolean(TOUCHSCREEN_TRACKPAD_PREF_STRING, DEFAULT_TOUCHSCREEN_TRACKPAD);
         config.enableLatencyToast = prefs.getBoolean(LATENCY_TOAST_PREF_STRING, DEFAULT_LATENCY_TOAST);

@@ -102,7 +102,7 @@ public class MoonBridge {
     public static final byte LI_CTYPE_XBOX     = 0x01;
     public static final byte LI_CTYPE_PS       = 0x02;
     public static final byte LI_CTYPE_NINTENDO = 0x03;
-    // Artemis Extended controller-generation hints. Older hosts safely treat
+    // EuropaGleam Extended controller-generation hints. Older hosts safely treat
     // unknown values as their default controller type.
     public static final byte LI_CTYPE_PS4      = 0x04;
     public static final byte LI_CTYPE_PS5      = 0x05;
@@ -417,7 +417,7 @@ public class MoonBridge {
 
     public static native void sendUtf8Text(String text);
 
-    // Artemis Extended client microphone packet: [sequence, mono, flags, Opus].
+    // EuropaGleam Extended client microphone packet: [sequence, mono, flags, Opus].
     public static native int sendMicrophonePacket(byte[] packet);
 
     public static native String getStageName(int stage);

@@ -48,7 +48,8 @@
         android:required="false"/>
 
     <application
-        android:name=".ArtemisApplication"
+        android:name=".EuropaGleamApplication"
+        android:label="EuropaGleam"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/backup_rules_s"

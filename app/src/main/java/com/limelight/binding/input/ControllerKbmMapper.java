@@ -100,7 +100,8 @@ public final class ControllerKbmMapper {
     private static final String PREF_MAPPING_PREFIX = "controller_kbm_mapping_";
     private static final String PREF_CUSTOM_BUTTONS = "controller_kbm_custom_buttons";
     private static final String PREF_PRESETS = "controller_kbm_presets";
-    private static final String PRESET_FILE_FORMAT = "artemis-controller-kbm-preset";
+    private static final String PRESET_FILE_FORMAT = "europagleam-controller-kbm-preset";
+    private static final String LEGACY_PRESET_FILE_FORMAT = "artemis-controller-kbm-preset";
     private static final int PRESET_FILE_VERSION = 1;
 
     public static final int DEFAULT_STICK_SPEED = 100;
@@ -241,7 +242,8 @@ public final class ControllerKbmMapper {
 
     public Preset importPreset(String serialized) throws JSONException {
         JSONObject root = new JSONObject(serialized);
-        if (!PRESET_FILE_FORMAT.equals(root.optString("format")) ||
+        String format = root.optString("format");
+        if ((!PRESET_FILE_FORMAT.equals(format) && !LEGACY_PRESET_FILE_FORMAT.equals(format)) ||
                 root.optInt("version", -1) != PRESET_FILE_VERSION) {
             throw new JSONException("Unsupported controller preset format");
         }

@@ -8,14 +8,14 @@ android {
 
     namespace 'com.limelight'
 
-    def appVersionName = project.hasProperty('versionName') ? project.property('versionName') : "20.2.6-europa4"
+    def appVersionName = project.hasProperty('versionName') ? project.property('versionName') : "20.2.6-europa9"
 
     defaultConfig {
         minSdk 21
         targetSdk 31
 
         versionName appVersionName
-        versionCode = 58
+        versionCode = 59
 
         // Generate native debug symbols to allow Google Play to symbolicate our native crashes
         ndk.debugSymbolLevel = 'FULL'

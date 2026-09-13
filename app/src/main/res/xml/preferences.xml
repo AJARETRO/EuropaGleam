@@ -329,6 +329,53 @@
             android:summary="@string/summary_checkbox_flip_face_buttons"
             android:title="@string/title_checkbox_flip_face_buttons"
             app:iconSpaceReserved="false" />
+        <PreferenceCategory
+            android:key="category_controller_remapping"
+            android:title="@string/title_category_controller_remapping"
+            app:iconSpaceReserved="false">
+            <CheckBoxPreference
+                android:defaultValue="false"
+                android:key="checkbox_swap_ab"
+                android:summary="@string/summary_swap_ab"
+                android:title="@string/title_swap_ab"
+                app:iconSpaceReserved="false" />
+            <CheckBoxPreference
+                android:defaultValue="false"
+                android:key="checkbox_swap_xy"
+                android:summary="@string/summary_swap_xy"
+                android:title="@string/title_swap_xy"
+                app:iconSpaceReserved="false" />
+            <CheckBoxPreference
+                android:defaultValue="false"
+                android:key="checkbox_swap_bumpers"
+                android:summary="@string/summary_swap_bumpers"
+                android:title="@string/title_swap_bumpers"
+                app:iconSpaceReserved="false" />
+            <CheckBoxPreference
+                android:defaultValue="false"
+                android:key="checkbox_swap_triggers"
+                android:summary="@string/summary_swap_triggers"
+                android:title="@string/title_swap_triggers"
+                app:iconSpaceReserved="false" />
+            <CheckBoxPreference
+                android:defaultValue="false"
+                android:key="checkbox_swap_sticks"
+                android:summary="@string/summary_swap_sticks"
+                android:title="@string/title_swap_sticks"
+                app:iconSpaceReserved="false" />
+            <CheckBoxPreference
+                android:defaultValue="false"
+                android:key="checkbox_invert_left_stick_y"
+                android:summary="@string/summary_invert_left_stick_y"
+                android:title="@string/title_invert_left_stick_y"
+                app:iconSpaceReserved="false" />
+            <CheckBoxPreference
+                android:defaultValue="false"
+                android:key="checkbox_invert_right_stick_y"
+                android:summary="@string/summary_invert_right_stick_y"
+                android:title="@string/title_invert_right_stick_y"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="checkbox_gamepad_touchpad_as_mouse"
@@ -715,6 +762,18 @@
         android:title="@string/category_on_screen_controls_settings"
         app:initialExpandedChildrenCount="1"
         app:iconSpaceReserved="false">
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_onscreen_macro_dock"
+            android:summary="@string/summary_onscreen_macro_dock"
+            android:title="@string/title_onscreen_macro_dock"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_allow_onscreen_with_gamepad"
+            android:summary="@string/summary_allow_onscreen_with_gamepad"
+            android:title="@string/title_allow_onscreen_with_gamepad"
+            app:iconSpaceReserved="false" />
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="checkbox_show_onscreen_controls"

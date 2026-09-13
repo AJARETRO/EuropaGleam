@@ -153,10 +153,10 @@ jobs:
             cat << 'EOF' > release_notes.md
           ## EuropaGleam Release
 
-          High-performance GameStream / Sunshine / Apollo client for Android based on Artemis Android Extended.
+          High-performance GameStream / Sunshine / Apollo client for Android.
 
           ### Highlights & Features:
-          - **Standalone Package ID (`dev.ajaretro.europagleam`)**: Installable alongside Artemis and vanilla Moonlight with zero package or provider conflicts.
+          - **Standalone Package ID (`dev.ajaretro.europagleam`)**: Installable alongside vanilla Moonlight with zero package or provider conflicts.
           - **ajaretro.dev Brand Identity**: Official brand icon with high-res launcher assets and custom styling.
           - **Target Android 12 (API 31)**: Optimized modern runtime compatibility and permissions.
           - **Background Streaming**: Stream continues active when the app is minimized or switched away, backed by a persistent low-priority foreground service.

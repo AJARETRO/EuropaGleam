@@ -9,7 +9,7 @@ import com.limelight.dualsense.DualSenseAudioBridge;
 import com.limelight.dualsense.DualSenseWiredOutput;
 import com.limelight.dualsense.DirectDualSenseBt;
 
-public class ArtemisApplication extends Application {
+public class EuropaGleamApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();

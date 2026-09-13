@@ -1661,6 +1661,46 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
                     (short)0, (byte)0, (byte)0, (short)0, (short)0, (short)0, (short)0);
         }
         else {
+            // Apply Universal Controller Remapping & Button Flipping
+            if (prefConfig.swapAB) {
+                int a = (inputMap & ControllerPacket.A_FLAG) != 0 ? ControllerPacket.B_FLAG : 0;
+                int b = (inputMap & ControllerPacket.B_FLAG) != 0 ? ControllerPacket.A_FLAG : 0;
+                inputMap = (inputMap & ~(ControllerPacket.A_FLAG | ControllerPacket.B_FLAG)) | a | b;
+            }
+            if (prefConfig.swapXY) {
+                int x = (inputMap & ControllerPacket.X_FLAG) != 0 ? ControllerPacket.Y_FLAG : 0;
+                int y = (inputMap & ControllerPacket.Y_FLAG) != 0 ? ControllerPacket.X_FLAG : 0;
+                inputMap = (inputMap & ~(ControllerPacket.X_FLAG | ControllerPacket.Y_FLAG)) | x | y;
+            }
+            if (prefConfig.swapBumpers) {
+                int lb = (inputMap & ControllerPacket.LB_FLAG) != 0 ? ControllerPacket.RB_FLAG : 0;
+                int rb = (inputMap & ControllerPacket.RB_FLAG) != 0 ? ControllerPacket.LB_FLAG : 0;
+                inputMap = (inputMap & ~(ControllerPacket.LB_FLAG | ControllerPacket.RB_FLAG)) | lb | rb;
+            }
+            if (prefConfig.swapTriggers) {
+                byte tmpTrig = leftTrigger;
+                leftTrigger = rightTrigger;
+                rightTrigger = tmpTrig;
+            }
+            if (prefConfig.swapSticks) {
+                short tmpX = leftStickX;
+                short tmpY = leftStickY;
+                leftStickX = rightStickX;
+                leftStickY = rightStickY;
+                rightStickX = tmpX;
+                rightStickY = tmpY;
+
+                int ls = (inputMap & ControllerPacket.LS_CLK_FLAG) != 0 ? ControllerPacket.RS_CLK_FLAG : 0;
+                int rs = (inputMap & ControllerPacket.RS_CLK_FLAG) != 0 ? ControllerPacket.LS_CLK_FLAG : 0;
+                inputMap = (inputMap & ~(ControllerPacket.LS_CLK_FLAG | ControllerPacket.RS_CLK_FLAG)) | ls | rs;
+            }
+            if (prefConfig.invertLeftStickY) {
+                leftStickY = (short) (leftStickY == Short.MIN_VALUE ? Short.MAX_VALUE : -leftStickY);
+            }
+            if (prefConfig.invertRightStickY) {
+                rightStickY = (short) (rightStickY == Short.MIN_VALUE ? Short.MAX_VALUE : -rightStickY);
+            }
+
             conn.sendControllerInput(controllerNumber, getActiveControllerMask(),
                     inputMap,
                     leftTrigger, rightTrigger,
@@ -5231,7 +5271,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
                     MoonBridge.LI_CTYPE_PS, supportedButtons, capabilities);
             extendedRequestAttempts++;
             lastExtendedRequestAtMs = now;
-            LimeLog.info("Artemis Extended emulation request retry " + extendedRequestAttempts +
+            LimeLog.info("EuropaGleam Extended emulation request retry " + extendedRequestAttempts +
                     ": mode=" + requestedMode);
         }
     }
@@ -5887,7 +5927,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
             if (detectedType == MoonBridge.LI_CTYPE_PS5 &&
                     isDualSenseProduct(device.getVendorId(), device.getProductId())) {
                 // Apollo's native DS5 audio endpoint is negotiated through the
-                // same Artemis Extended arrival used by the Bluetooth Bridge.
+                // same EuropaGleam Extended arrival used by the Bluetooth Bridge.
                 // A bare LI_CTYPE_PS5 arrival creates a controller, but does not
                 // request the four-channel DualSense audio/HD-haptics endpoint.
                 type = applyControllerEmulationPreference(MoonBridge.LI_CTYPE_PS5);

@@ -249,6 +249,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private float lastAbsTouchDownX, lastAbsTouchDownY;
 
     private boolean quitOnStop = false;
+    private boolean isReconnecting = false;
+    private com.limelight.ui.OnScreenMacroDock onScreenMacroDock;
     private boolean isHidingOverlays;
     private boolean floatingButtonShown;
     private boolean overlayToggleZoomButtonShown;
@@ -349,7 +351,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     public static final String EXTRA_DISPLAY_ID = "DisplayID";
     public static final String EXTRA_RECONNECT_ATTEMPT = "ReconnectAttempt";
 
-    public static final String CLIPBOARD_IDENTIFIER = "ArtemisStreaming";
+    public static final String CLIPBOARD_IDENTIFIER = "EuropaGleamStreaming";
 
     private String appUUID;
     private String host;
@@ -948,7 +950,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         if (prefConfig.onscreenController) {
             // create virtual onscreen controller
-            if (prefConfig.hideOSCWhenHasGamepad) {
+            if (prefConfig.hideOSCWhenHasGamepad && !prefConfig.allowOnscreenWithGamepad) {
                 if (!controllerHandler.hasController()) {
                     initVirtualController();
                 }
@@ -990,6 +992,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         overlayToggleButton = findViewById(R.id.overlayToggleZoomButton);
         setupOverlayToggleButton();
+
+        if (prefConfig.onscreenMacroDock) {
+            initMacroDock();
+        }
 
         //fixed size + pacing without back-pressure on MTK
         try {
@@ -4200,6 +4206,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             // It must be stopped before conn.stop() tears that stream down;
             // otherwise an in-flight Bluetooth mic frame can lock a destroyed
             // native control-stream mutex.
+            if (onScreenMacroDock != null) {
+                onScreenMacroDock.destroy();
+                onScreenMacroDock = null;
+            }
             DualSenseMicrophoneBridge.stop();
             controllerHandler.stop();
 
@@ -4211,8 +4221,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             // thread to keep things smooth for the UI. Inside moonlight-common,
             // we prevent another thread from starting a connection before and
             // during the process of stopping this one.
-            new Thread() {
-                public void run() {
+            if (!isReconnecting) {
+                new Thread() {
+                    public void run() {
                     conn.stop();
                     if (httpConn != null && quitOnStop) {
                         try {
@@ -4225,6 +4236,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     }
                 }
             }.start();
+            }
         }
     }
 
@@ -4412,16 +4424,61 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         });
     }
 
-    private void reconnectStream(int attempt) {
-        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+    private void reconnectStream(final int attempt) {
+        if (isReconnecting || isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
             return;
         }
-        com.limelight.utils.SessionDiagnostics.getInstance().recordEvent("RECONNECT", "Initiating reconnect attempt " + attempt + " of 3");
-        Intent reconnectIntent = new Intent(getIntent());
-        reconnectIntent.putExtra(EXTRA_RECONNECT_ATTEMPT, attempt);
-        finish();
-        startActivity(reconnectIntent);
-        overridePendingTransition(0, 0);
+        isReconnecting = true;
+        com.limelight.utils.SessionDiagnostics.getInstance().recordEvent("RECONNECT", "Initiating clean quit and reconnect attempt " + attempt + " of 3");
+
+        final ProgressDialog resetDialog = new ProgressDialog(Game.this);
+        resetDialog.setMessage(getString(R.string.reconnect_resetting_session));
+        resetDialog.setCancelable(false);
+        try {
+            resetDialog.show();
+        } catch (Exception ignored) {}
+
+        new Thread(() -> {
+            try {
+                if (conn != null) {
+                    LimeLog.info("Stopping connection before reconnect...");
+                    conn.stop();
+                }
+            } catch (Exception e) {
+                LimeLog.warning("Error stopping conn before reconnect: " + e.getMessage());
+            }
+
+            if (httpConn != null) {
+                try {
+                    LimeLog.info("Quitting host stream session (quitApp) to avoid black screen on reconnect...");
+                    httpConn.quitApp();
+                } catch (Exception e) {
+                    LimeLog.warning("Error quitting app on host: " + e.getMessage());
+                }
+            }
+
+            // Wait 1000ms for Sunshine to cleanly tear down its virtual display / encoder pipeline
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ignored) {}
+
+            runOnUiThread(() -> {
+                try {
+                    if (resetDialog.isShowing()) {
+                        resetDialog.dismiss();
+                    }
+                } catch (Exception ignored) {}
+
+                if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+                    return;
+                }
+                Intent reconnectIntent = new Intent(getIntent());
+                reconnectIntent.putExtra(EXTRA_RECONNECT_ATTEMPT, attempt);
+                finish();
+                startActivity(reconnectIntent);
+                overridePendingTransition(0, 0);
+            });
+        }).start();
     }
 
     private void showAutoReconnectCountdownDialog(final int nextAttempt, final String reason) {
@@ -5470,6 +5527,119 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             }
         }
         return null;
+    }
+
+    public NvConnection getConnection() {
+        return conn;
+    }
+
+    public ControllerHandler getControllerHandler() {
+        return controllerHandler;
+    }
+
+    public void initMacroDock() {
+        if (onScreenMacroDock == null && rootView instanceof FrameLayout) {
+            onScreenMacroDock = new com.limelight.ui.OnScreenMacroDock(this, (FrameLayout) rootView);
+        }
+        if (onScreenMacroDock != null) {
+            onScreenMacroDock.setVisible(prefConfig.onscreenMacroDock);
+        }
+    }
+
+    public void toggleMacroDock() {
+        prefConfig.onscreenMacroDock = !prefConfig.onscreenMacroDock;
+        PreferenceManager.getDefaultSharedPreferences(this).edit()
+                .putBoolean(PreferenceConfiguration.ONSCREEN_MACRO_DOCK_PREF_STRING, prefConfig.onscreenMacroDock)
+                .apply();
+        if (onScreenMacroDock == null) {
+            initMacroDock();
+        } else {
+            onScreenMacroDock.setVisible(prefConfig.onscreenMacroDock);
+        }
+        Toast.makeText(this, prefConfig.onscreenMacroDock ? "Macro Dock Enabled" : "Macro Dock Disabled", Toast.LENGTH_SHORT).show();
+    }
+
+    public void showControllerRemappingDialog() {
+        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
+
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        final String[] items = new String[] {
+                getString(R.string.title_swap_ab),
+                getString(R.string.title_swap_xy),
+                getString(R.string.title_swap_bumpers),
+                getString(R.string.title_swap_triggers),
+                getString(R.string.title_swap_sticks),
+                getString(R.string.title_invert_left_stick_y),
+                getString(R.string.title_invert_right_stick_y),
+                getString(R.string.title_onscreen_macro_dock),
+                getString(R.string.title_allow_onscreen_with_gamepad)
+        };
+
+        final boolean[] checkedItems = new boolean[] {
+                prefConfig.swapAB,
+                prefConfig.swapXY,
+                prefConfig.swapBumpers,
+                prefConfig.swapTriggers,
+                prefConfig.swapSticks,
+                prefConfig.invertLeftStickY,
+                prefConfig.invertRightStickY,
+                prefConfig.onscreenMacroDock,
+                prefConfig.allowOnscreenWithGamepad
+        };
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(R.string.title_category_controller_remapping);
+        builder.setMultiChoiceItems(items, checkedItems, (dialog, which, isChecked) -> {
+            checkedItems[which] = isChecked;
+            SharedPreferences.Editor editor = prefs.edit();
+            switch (which) {
+                case 0:
+                    prefConfig.swapAB = isChecked;
+                    editor.putBoolean(PreferenceConfiguration.SWAP_AB_PREF_STRING, isChecked);
+                    break;
+                case 1:
+                    prefConfig.swapXY = isChecked;
+                    editor.putBoolean(PreferenceConfiguration.SWAP_XY_PREF_STRING, isChecked);
+                    break;
+                case 2:
+                    prefConfig.swapBumpers = isChecked;
+                    editor.putBoolean(PreferenceConfiguration.SWAP_BUMPERS_PREF_STRING, isChecked);
+                    break;
+                case 3:
+                    prefConfig.swapTriggers = isChecked;
+                    editor.putBoolean(PreferenceConfiguration.SWAP_TRIGGERS_PREF_STRING, isChecked);
+                    break;
+                case 4:
+                    prefConfig.swapSticks = isChecked;
+                    editor.putBoolean(PreferenceConfiguration.SWAP_STICKS_PREF_STRING, isChecked);
+                    break;
+                case 5:
+                    prefConfig.invertLeftStickY = isChecked;
+                    editor.putBoolean(PreferenceConfiguration.INVERT_LEFT_STICK_Y_PREF_STRING, isChecked);
+                    break;
+                case 6:
+                    prefConfig.invertRightStickY = isChecked;
+                    editor.putBoolean(PreferenceConfiguration.INVERT_RIGHT_STICK_Y_PREF_STRING, isChecked);
+                    break;
+                case 7:
+                    prefConfig.onscreenMacroDock = isChecked;
+                    editor.putBoolean(PreferenceConfiguration.ONSCREEN_MACRO_DOCK_PREF_STRING, isChecked);
+                    if (onScreenMacroDock != null) {
+                        onScreenMacroDock.setVisible(isChecked);
+                    }
+                    break;
+                case 8:
+                    prefConfig.allowOnscreenWithGamepad = isChecked;
+                    editor.putBoolean(PreferenceConfiguration.ALLOW_ONSCREEN_WITH_GAMEPAD_PREF_STRING, isChecked);
+                    break;
+            }
+            editor.apply();
+        });
+
+        builder.setPositiveButton(R.string.close, (dialog, which) -> dialog.dismiss());
+        builder.show();
     }
 
 }
