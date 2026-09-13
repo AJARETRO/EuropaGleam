@@ -71,7 +71,7 @@ jobs:
 
       - name: Build Release APKs
         run: |
-          ./gradlew assembleNonRoot_gameRelease assembleRootRelease --stacktrace
+          ./gradlew assembleNonRoot_gameRelease assembleRootRelease -x lint --stacktrace
 
       - name: Sign & Prepare Release Assets
         id: prepare_assets

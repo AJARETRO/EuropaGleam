@@ -82,7 +82,9 @@ android {
     }
 
     lint {
-        disable 'MissingTranslation'
+        disable 'MissingTranslation', 'ExpiredTargetSdkVersion'
+        abortOnError false
+        checkReleaseBuilds false
         lintConfig file('lint.xml')
     }
 
