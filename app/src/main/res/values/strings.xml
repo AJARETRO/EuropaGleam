@@ -1054,4 +1054,19 @@
     <string name="mobile_data_blocked_title">Mobile Data Streaming Blocked</string>
     <string name="mobile_data_blocked_message">EuropaGleam is currently set to Wi-Fi only to prevent large cellular data usage. You can allow mobile data streaming in Settings or continue now.</string>
     <string name="mobile_data_allow_button">Stream on Mobile Data</string>
+    <!-- Auto-Update Strings -->
+    <string name="title_check_for_updates">Check for Updates</string>
+    <string name="summary_check_for_updates">Check GitHub for new EuropaGleam releases and install updates</string>
+    <string name="checking_for_updates">Checking for EuropaGleam updates…</string>
+    <string name="already_latest_version">EuropaGleam is up to date (%s)</string>
+    <string name="update_available_title">EuropaGleam Update Available (%s)</string>
+    <string name="update_downloading_title">Downloading EuropaGleam</string>
+    <string name="update_downloading_message">Downloading %s… Please wait.</string>
+    <string name="update_download_failed">Download failed. Opening release page in browser…</string>
+    <string name="update_check_failed">Unable to check for updates. Check internet connection.</string>
+    <string name="update_install_now">Download &amp; Install</string>
+    <string name="update_view_on_github">View on GitHub</string>
+    <string name="update_download_size">Download Size: ~%d MB</string>
+    <string name="update_grant_install_permission">Please allow EuropaGleam to install updates</string>
+    <string name="update_button_desc">Check for Updates</string>
 </resources>

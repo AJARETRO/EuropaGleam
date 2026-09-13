@@ -359,6 +359,21 @@ public class StreamSettings extends AppCompatActivity {
                     PreferenceConfiguration.QUICK_MENU_SHORTCUT_MODIFIER_PREF_STRING,
                     PreferenceConfiguration.QUICK_MENU_SHORTCUT_ACTIVATOR_PREF_STRING);
             configureBatteryRestrictionsPreference();
+            configureUpdatePreference();
+        }
+
+        private void configureUpdatePreference() {
+            Preference pref = findPreference("pref_check_for_updates");
+            if (pref == null || getContext() == null) {
+                return;
+            }
+            pref.setSummary(getString(R.string.summary_check_for_updates) + " (v" + com.limelight.BuildConfig.VERSION_NAME + ")");
+            pref.setOnPreferenceClickListener(p -> {
+                if (getActivity() != null) {
+                    com.limelight.utils.UpdateHelper.checkForUpdates(getActivity(), true);
+                }
+                return true;
+            });
         }
 
         private void configureBatteryRestrictionsPreference() {
