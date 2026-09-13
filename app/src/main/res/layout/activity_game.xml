@@ -151,6 +151,36 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
+        <!-- Modern Sleek Single-Line Top Bar Overlay -->
+        <TextView
+            android:id="@+id/performanceOverlayTopBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/perf_top_bar_bg"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:ellipsize="none"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:shadowColor="#E6000000"
+            android:shadowDx="0"
+            android:shadowDy="1.5"
+            android:shadowRadius="3.0"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            android:clickable="true"
+            android:focusable="false"
+            android:preferKeepClear="true" />
+
         <TextView
             android:id="@+id/performanceOverlayBig"
             android:layout_width="wrap_content"

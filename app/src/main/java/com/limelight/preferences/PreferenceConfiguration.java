@@ -341,6 +341,19 @@ public class PreferenceConfiguration {
 
     public boolean enablePerfOverlayBottom;
 
+    public static final int PERF_OVERLAY_STYLE_TOP_BAR = 0;
+    public static final int PERF_OVERLAY_STYLE_LITE = 1;
+    public static final int PERF_OVERLAY_STYLE_CLASSIC = 2;
+
+    public int perfOverlayStyle = PERF_OVERLAY_STYLE_TOP_BAR;
+    public boolean perfOverlayShowFps = true;
+    public boolean perfOverlayShowPing = true;
+    public boolean perfOverlayShowHostEncode = true;
+    public boolean perfOverlayShowDecode = true;
+    public boolean perfOverlayShowBitrate = true;
+    public boolean perfOverlayShowCpu = true;
+    public boolean perfOverlayShowGpu = true;
+
     public boolean enableLatencyToast;
     public boolean enableBackMenu;
     public boolean enableFloatingButton;
@@ -970,8 +983,16 @@ private static int getFramePacingValue(Context context) {
         int renderModeInt = Integer.parseInt(renderMode);
         config.renderMode = renderModeInt;
 
+        // One-time default migration: ensure default is touchpad mode (2) for users who never customized it
+        if (!prefs.contains("mouse_mode_list") || !prefs.getBoolean("mouse_mode_touchpad_default_applied_v2", false)) {
+            if (!prefs.contains("mouse_mode_list") || "0".equals(prefs.getString("mouse_mode_list", "0"))) {
+                prefs.edit().putString("mouse_mode_list", "2").apply();
+            }
+            prefs.edit().putBoolean("mouse_mode_touchpad_default_applied_v2", true).apply();
+        }
+
         // Read mouse mode and set touch settings accordingly
-        String mouseMode = prefs.getString("mouse_mode_list", "0");
+        String mouseMode = prefs.getString("mouse_mode_list", "2");
         int mouseModeInt = Integer.parseInt(mouseMode);
         switch (mouseModeInt) {
             case 0: // Multi-touch
@@ -1003,6 +1024,21 @@ private static int getFramePacingValue(Context context) {
         config.enablePerfLogging = prefs.getBoolean(ENABLE_PERF_LOGGING, DEFAULT_ENABLE_PERF_LOGGING);
         config.enablePerfOverlayLite = prefs.getBoolean("checkbox_enable_perf_overlay_lite",DEFAULT_ENABLE_PERF_OVERLAY);
         config.enablePerfOverlayBottom = prefs.getBoolean("checkbox_enable_perf_overlay_bottom",DEFAULT_PERF_OVERLAY_BOTTOM);
+
+        String overlayStyleStr = prefs.getString("pref_overlay_style", "0");
+        try {
+            config.perfOverlayStyle = Integer.parseInt(overlayStyleStr);
+        } catch (NumberFormatException e) {
+            config.perfOverlayStyle = PERF_OVERLAY_STYLE_TOP_BAR;
+        }
+
+        config.perfOverlayShowFps = prefs.getBoolean("pref_overlay_show_fps", true);
+        config.perfOverlayShowPing = prefs.getBoolean("pref_overlay_show_ping", true);
+        config.perfOverlayShowHostEncode = prefs.getBoolean("pref_overlay_show_host_encode", true);
+        config.perfOverlayShowDecode = prefs.getBoolean("pref_overlay_show_decode", true);
+        config.perfOverlayShowBitrate = prefs.getBoolean("pref_overlay_show_bitrate", true);
+        config.perfOverlayShowCpu = prefs.getBoolean("pref_overlay_show_cpu", true);
+        config.perfOverlayShowGpu = prefs.getBoolean("pref_overlay_show_gpu", true);
         config.bindAllUsb = prefs.getBoolean(BIND_ALL_USB_STRING, DEFAULT_BIND_ALL_USB);
         config.mouseEmulation = prefs.getBoolean(MOUSE_EMULATION_STRING, DEFAULT_MOUSE_EMULATION);
         config.mouseNavButtons = prefs.getBoolean(MOUSE_NAV_BUTTONS_STRING, DEFAULT_MOUSE_NAV_BUTTONS);

@@ -29,6 +29,7 @@ import com.limelight.binding.video.CrashListener;
 import com.limelight.binding.video.MediaCodecDecoderRenderer;
 import com.limelight.binding.video.MediaCodecHelper;
 import com.limelight.binding.video.PerfOverlayListener;
+import com.limelight.binding.video.StreamPerformanceStats;
 import com.limelight.dualsense.DualSenseBridge;
 import com.limelight.dualsense.DualSenseAudioBridge;
 import com.limelight.dualsense.DualSenseMicrophoneBridge;
@@ -302,9 +303,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private int requestedNotificationOverlayVisibility = View.GONE;
     private View performanceOverlayView;
 
+    private TextView performanceOverlayTopBar;
     private TextView performanceOverlayLite;
 
     private TextView performanceOverlayBig;
+    private StreamPerformanceStats lastPerfStats;
 
     private MediaCodecDecoderRenderer decoderRenderer;
     private boolean reportedCrash;
@@ -622,6 +625,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         performanceOverlayView = findViewById(R.id.performanceOverlay);
 
+        performanceOverlayTopBar = findViewById(R.id.performanceOverlayTopBar);
+        if (performanceOverlayTopBar != null) {
+            performanceOverlayTopBar.setOnClickListener(v -> showOverlayCustomizeDialog());
+        }
+
         performanceOverlayLite = findViewById(R.id.performanceOverlayLite);
 
         performanceOverlayBig = findViewById(R.id.performanceOverlayBig);
@@ -739,15 +747,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Check if the user has enabled performance stats overlay
         if (prefConfig.enablePerfOverlay) {
-            performanceOverlayView.setVisibility(View.VISIBLE);
-            if (prefConfig.enablePerfOverlayLite) {
-                performanceOverlayLite.setVisibility(View.VISIBLE);
-                if(prefConfig.enablePerfOverlayLiteDialog){
-                    performanceOverlayLite.setOnClickListener(v -> showGameMenu(null));
-                }
-            } else {
-                performanceOverlayBig.setVisibility(View.VISIBLE);
-            }
+            updatePerfOverlayVisibility();
             if (prefConfig.enablePerfOverlayBottom) {
                 //performanceOverlayView.getLayoutParams().layout_gravity = Gravity.BOTTOM;
                 FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) performanceOverlayView.getLayoutParams();
@@ -4929,14 +4929,33 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     @Override
+    public void onPerfStatsUpdate(final StreamPerformanceStats stats) {
+        lastPerfStats = stats;
+        runOnUiThread(() -> {
+            if (performanceOverlayTopBar != null && prefConfig.enablePerfOverlay &&
+                    prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_TOP_BAR) {
+                String topBarText = stats.buildTopBarString(
+                        prefConfig.perfOverlayShowFps,
+                        prefConfig.perfOverlayShowPing,
+                        prefConfig.perfOverlayShowHostEncode,
+                        prefConfig.perfOverlayShowDecode,
+                        prefConfig.perfOverlayShowBitrate,
+                        prefConfig.perfOverlayShowCpu,
+                        prefConfig.perfOverlayShowGpu
+                );
+                performanceOverlayTopBar.setText(topBarText);
+            }
+        });
+    }
+
+    @Override
     public void onPerfUpdate(final String text) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if(prefConfig.enablePerfOverlayLite){
-                    performanceOverlayLite.setText(text);
-                }else{
-                    performanceOverlayBig.setText(text);
+        runOnUiThread(() -> {
+            if (prefConfig.enablePerfOverlay) {
+                if (prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_LITE) {
+                    if (performanceOverlayLite != null) performanceOverlayLite.setText(text);
+                } else if (prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_CLASSIC) {
+                    if (performanceOverlayBig != null) performanceOverlayBig.setText(text);
                 }
             }
         });
@@ -5035,13 +5054,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         String savedMouseModeIndexStr = ProfilesManager.getInstance()
                 .getOverlayingSharedPreferences(this)
-                .getString("mouse_mode_list", "0");
+                .getString("mouse_mode_list", "2");
 
         int savedMouseModeIndex;
         try {
             savedMouseModeIndex = Integer.parseInt(savedMouseModeIndexStr);
         } catch (NumberFormatException e) {
-            savedMouseModeIndex = 0;
+            savedMouseModeIndex = 2;
         }
 
         String savedMouseModeString = (savedMouseModeIndex >= 0 && savedMouseModeIndex < mouseModes.length)
@@ -5201,18 +5220,100 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         updateZoomButtonAppearance();
     }
 
+    public void updatePerfOverlayVisibility() {
+        if (!prefConfig.enablePerfOverlay) {
+            if (performanceOverlayView != null) performanceOverlayView.setVisibility(View.GONE);
+            if (performanceOverlayTopBar != null) performanceOverlayTopBar.setVisibility(View.GONE);
+            if (performanceOverlayLite != null) performanceOverlayLite.setVisibility(View.GONE);
+            if (performanceOverlayBig != null) performanceOverlayBig.setVisibility(View.GONE);
+            return;
+        }
+
+        if (performanceOverlayView != null) performanceOverlayView.setVisibility(View.VISIBLE);
+        if (prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_TOP_BAR) {
+            if (performanceOverlayTopBar != null) performanceOverlayTopBar.setVisibility(View.VISIBLE);
+            if (performanceOverlayLite != null) performanceOverlayLite.setVisibility(View.GONE);
+            if (performanceOverlayBig != null) performanceOverlayBig.setVisibility(View.GONE);
+        } else if (prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_LITE) {
+            if (performanceOverlayTopBar != null) performanceOverlayTopBar.setVisibility(View.GONE);
+            if (performanceOverlayLite != null) {
+                performanceOverlayLite.setVisibility(View.VISIBLE);
+                if (prefConfig.enablePerfOverlayLiteDialog) {
+                    performanceOverlayLite.setOnClickListener(v -> showGameMenu(null));
+                }
+            }
+            if (performanceOverlayBig != null) performanceOverlayBig.setVisibility(View.GONE);
+        } else {
+            if (performanceOverlayTopBar != null) performanceOverlayTopBar.setVisibility(View.GONE);
+            if (performanceOverlayLite != null) performanceOverlayLite.setVisibility(View.GONE);
+            if (performanceOverlayBig != null) performanceOverlayBig.setVisibility(View.VISIBLE);
+        }
+    }
+
     public void toggleHUD() {
         prefConfig.enablePerfOverlay = !prefConfig.enablePerfOverlay;
-        if (prefConfig.enablePerfOverlay) {
-            performanceOverlayView.setVisibility(View.VISIBLE);
-            if(prefConfig.enablePerfOverlayLite){
-                performanceOverlayLite.setVisibility(View.VISIBLE);
-            }else{
-                performanceOverlayBig.setVisibility(View.VISIBLE);
-            }
-        } else {
-            performanceOverlayView.setVisibility(View.GONE);
+        updatePerfOverlayVisibility();
+        if (prefConfig.enablePerfOverlay && lastPerfStats != null) {
+            onPerfStatsUpdate(lastPerfStats);
         }
+    }
+
+    public void showOverlayCustomizeDialog() {
+        final String[] items = new String[] {
+                getString(R.string.title_perf_show_fps),
+                getString(R.string.title_perf_show_ping),
+                getString(R.string.title_perf_show_host_encode),
+                getString(R.string.title_perf_show_decode),
+                getString(R.string.title_perf_show_bitrate),
+                getString(R.string.title_perf_show_cpu),
+                getString(R.string.title_perf_show_gpu)
+        };
+        final boolean[] checked = new boolean[] {
+                prefConfig.perfOverlayShowFps,
+                prefConfig.perfOverlayShowPing,
+                prefConfig.perfOverlayShowHostEncode,
+                prefConfig.perfOverlayShowDecode,
+                prefConfig.perfOverlayShowBitrate,
+                prefConfig.perfOverlayShowCpu,
+                prefConfig.perfOverlayShowGpu
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.title_customize_perf_stats)
+                .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
+                    checked[which] = isChecked;
+                })
+                .setPositiveButton(R.string.ok, (dialog, which) -> {
+                    prefConfig.perfOverlayShowFps = checked[0];
+                    prefConfig.perfOverlayShowPing = checked[1];
+                    prefConfig.perfOverlayShowHostEncode = checked[2];
+                    prefConfig.perfOverlayShowDecode = checked[3];
+                    prefConfig.perfOverlayShowBitrate = checked[4];
+                    prefConfig.perfOverlayShowCpu = checked[5];
+                    prefConfig.perfOverlayShowGpu = checked[6];
+
+                    // Enable overlay if not already visible
+                    prefConfig.enablePerfOverlay = true;
+                    updatePerfOverlayVisibility();
+
+                    ProfilesManager.getInstance().getOverlayingSharedPreferences(this)
+                            .edit()
+                            .putBoolean("checkbox_enable_perf_overlay", true)
+                            .putBoolean("pref_overlay_show_fps", checked[0])
+                            .putBoolean("pref_overlay_show_ping", checked[1])
+                            .putBoolean("pref_overlay_show_host_encode", checked[2])
+                            .putBoolean("pref_overlay_show_decode", checked[3])
+                            .putBoolean("pref_overlay_show_bitrate", checked[4])
+                            .putBoolean("pref_overlay_show_cpu", checked[5])
+                            .putBoolean("pref_overlay_show_gpu", checked[6])
+                            .apply();
+
+                    if (lastPerfStats != null) {
+                        onPerfStatsUpdate(lastPerfStats);
+                    }
+                })
+                .setNegativeButton(R.string.game_menu_cancel, null)
+                .show();
     }
 
     //切换触控灵敏度开关

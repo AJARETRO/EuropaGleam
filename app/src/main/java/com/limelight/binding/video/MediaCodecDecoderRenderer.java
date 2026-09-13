@@ -42,6 +42,7 @@ import android.os.SystemClock;
 import android.util.Range;
 import android.view.Choreographer;
 import android.view.Surface;
+import com.limelight.utils.HardwareMonitor;
 
 public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements Choreographer.FrameCallback {
     // Latency profile: favor minimal end-to-end delay over absolute smoothness.
@@ -1877,29 +1878,61 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                     decoder = "(unknown)";
                 }
 
-                float decodeTimeMs = (float)lastTwo.decoderTimeMs / lastTwo.totalFramesReceived;
+                float decodeTimeMs = lastTwo.totalFramesReceived > 0 ? (float)lastTwo.decoderTimeMs / lastTwo.totalFramesReceived : 0;
                 long rttInfo = MoonBridge.getEstimatedRttInfo();
+                int pingMs = (int)(rttInfo >> 32);
+                float hostEncodeMs = lastTwo.framesWithHostProcessingLatency > 0 ?
+                        (float)lastTwo.totalHostProcessingLatency / 10f / lastTwo.framesWithHostProcessingLatency : 0f;
+
+                double mbps = 0.0;
+                float realtimeKBytesPerSec = 0f;
+                if (TrafficStatsHelper.getPackageRxBytes(Process.myUid()) != TrafficStats.UNSUPPORTED) {
+                    long netData = TrafficStatsHelper.getPackageRxBytes(Process.myUid()) + TrafficStatsHelper.getPackageTxBytes(Process.myUid());
+                    if (lastNetDataNum != 0 && netData >= lastNetDataNum) {
+                        long deltaBytes = netData - lastNetDataNum;
+                        long elapsedMs = SystemClock.uptimeMillis() - activeWindowVideoStats.measurementStartTimestamp;
+                        double elapsedSec = elapsedMs > 0 ? (elapsedMs / 1000.0) : 1.0;
+                        mbps = (deltaBytes * 8.0) / (elapsedSec * 1_000_000.0);
+                        realtimeKBytesPerSec = (float) (deltaBytes / 1024.0 / elapsedSec);
+                    }
+                    lastNetDataNum = netData;
+                }
+
+                HardwareMonitor hwMon = HardwareMonitor.getInstance();
+                hwMon.update();
+                float cpuUsage = hwMon.getCpuUsage();
+                float gpuUsage = hwMon.getGpuUsage();
+
+                StreamPerformanceStats stats = new StreamPerformanceStats();
+                stats.incomingFps = fps.receivedFps;
+                stats.renderFps = fps.renderedFps;
+                stats.pingMs = pingMs;
+                stats.hostEncodeMs = hostEncodeMs;
+                stats.receiverDecodeMs = decodeTimeMs;
+                stats.bitrateMbps = mbps;
+                stats.cpuUsagePercent = cpuUsage;
+                stats.gpuUsagePercent = gpuUsage;
+                stats.packetLossPercent = lastTwo.totalFrames > 0 ? ((float)lastTwo.framesLost / lastTwo.totalFrames * 100f) : 0f;
+                stats.streamWidth = initialWidth;
+                stats.streamHeight = initialHeight;
+                stats.decoderName = decoder;
+
                 StringBuilder sb = new StringBuilder();
                 if(prefs.enablePerfOverlayLite){
-                    if(TrafficStatsHelper.getPackageRxBytes(Process.myUid()) != TrafficStats.UNSUPPORTED){
-                        long netData=TrafficStatsHelper.getPackageRxBytes(Process.myUid())+TrafficStatsHelper.getPackageTxBytes(Process.myUid());
-                        if(lastNetDataNum!=0){
-                            sb.append(context.getString(R.string.perf_overlay_lite_bandwidth) + ": ");
-                            float realtimeNetData=(netData-lastNetDataNum)/1024f;
-                            if(realtimeNetData>=1000){
-                                sb.append(String.format("%.2f", realtimeNetData/1024f) +"M/s\t ");
-                            }else{
-                                sb.append(String.format("%.2f", realtimeNetData) +"K/s\t ");
-                            }
+                    if(realtimeKBytesPerSec > 0){
+                        sb.append(context.getString(R.string.perf_overlay_lite_bandwidth) + ": ");
+                        if(realtimeKBytesPerSec >= 1000){
+                            sb.append(String.format(Locale.US, "%.2f", realtimeKBytesPerSec/1024f) +"M/s\t ");
+                        }else{
+                            sb.append(String.format(Locale.US, "%.2f", realtimeKBytesPerSec) +"K/s\t ");
                         }
-                        lastNetDataNum=netData;
                     }
 //                    sb.append("分辨率：");
 //                    sb.append(initialWidth + "x" + initialHeight);
                     sb.append(context.getString(R.string.perf_overlay_lite_network_decoding_delay) + ": ");
-                    sb.append(context.getString(R.string.perf_overlay_lite_net,(int)(rttInfo >> 32)));
+                    sb.append(context.getString(R.string.perf_overlay_lite_net, pingMs));
                     sb.append(" / ");
-                    sb.append(context.getString(R.string.perf_overlay_lite_dectime,decodeTimeMs));
+                    sb.append(context.getString(R.string.perf_overlay_lite_dectime, decodeTimeMs));
                     sb.append("\t");
                     sb.append(context.getString(R.string.perf_overlay_lite_packet_loss) + ": ");
                     sb.append(context.getString(R.string.perf_overlay_lite_netdrops,(float)lastTwo.framesLost / lastTwo.totalFrames * 100));
@@ -1941,21 +1974,16 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                     sb.append(context.getString(R.string.perf_overlay_renderingfps, fps.renderedFps)).append('\n');
                     sb.append(context.getString(R.string.perf_overlay_netdrops,
                             (float)lastTwo.framesLost / lastTwo.totalFrames * 100)).append('\n');
-                    if(TrafficStatsHelper.getPackageRxBytes(Process.myUid()) != TrafficStats.UNSUPPORTED){
-                        long netData=TrafficStatsHelper.getPackageRxBytes(Process.myUid())+TrafficStatsHelper.getPackageTxBytes(Process.myUid());
-                        if(lastNetDataNum!=0){
-                            sb.append(context.getString(R.string.perf_overlay_lite_bandwidth) + ": ");
-                            float realtimeNetData=(netData-lastNetDataNum)/1024f;
-                            if(realtimeNetData>=1000){
-                                sb.append(String.format("%.2f", realtimeNetData/1024f) +"M/s\n");
-                            }else{
-                                sb.append(String.format("%.2f", realtimeNetData) +"K/s\n");
-                            }
+                    if(realtimeKBytesPerSec > 0){
+                        sb.append(context.getString(R.string.perf_overlay_lite_bandwidth) + ": ");
+                        if(realtimeKBytesPerSec >= 1000){
+                            sb.append(String.format(Locale.US, "%.2f", realtimeKBytesPerSec/1024f) +"M/s\n");
+                        }else{
+                            sb.append(String.format(Locale.US, "%.2f", realtimeKBytesPerSec) +"K/s\n");
                         }
-                        lastNetDataNum=netData;
                     }
                     sb.append(context.getString(R.string.perf_overlay_netlatency,
-                            (int)(rttInfo >> 32), (int)rttInfo)).append('\n');
+                            pingMs, (int)rttInfo)).append('\n');
                     if (lastTwo.framesWithHostProcessingLatency > 0) {
                         sb.append(context.getString(R.string.perf_overlay_hostprocessinglatency,
                                 (float)lastTwo.minHostProcessingLatency / 10,
@@ -1965,7 +1993,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                     sb.append(context.getString(R.string.perf_overlay_dectime, decodeTimeMs));
                 }
                 String fullLog = sb.toString();
-                if(prefs.enablePerfOverlay) {
+                if(prefs.enablePerfOverlay && perfListener != null) {
+                    perfListener.onPerfStatsUpdate(stats);
                     perfListener.onPerfUpdate(fullLog);
                 }
                 // Best latency is only met at requested highest fps, rest can be ignored
@@ -1975,6 +2004,7 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                     minDecodeTimeFullLog = fullLog;
                 }
             }
+
             globalVideoStats.add(activeWindowVideoStats);
             lastWindowVideoStats.copy(activeWindowVideoStats);
             activeWindowVideoStats.clear();

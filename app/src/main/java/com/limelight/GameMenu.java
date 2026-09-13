@@ -115,6 +115,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
 
     private static final String ADV_MOUSE_MODE = "advanced_mouse_mode";
     private static final String ADV_HUD = "advanced_hud";
+    private static final String ADV_CUSTOMIZE_HUD = "advanced_customize_hud";
     private static final String ADV_FLOATING_BUTTON = "advanced_floating_button";
     private static final String ADV_SPECIAL_KEYS_TOGGLE = "advanced_special_keys_toggle";
     private static final String ADV_OSC_TOGGLE = "advanced_osc_toggle";
@@ -417,7 +418,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
         if (ADV_MOUSE_MODE.equals(id)) {
             return R.drawable.ic_qm_mouse;
         }
-        if (ADV_HUD.equals(id)) {
+        if (ADV_HUD.equals(id) || ADV_CUSTOMIZE_HUD.equals(id)) {
             return R.drawable.ic_qm_hud;
         }
         if (ADV_FLOATING_BUTTON.equals(id)) {
@@ -3915,6 +3916,10 @@ public class GameMenu implements Game.GameMenuCallbacks {
         }
 
         options.add(new MenuOption(ADV_HUD, getString(R.string.game_menu_toggle_hud), true, game::toggleHUD));
+        options.add(new MenuOption(ADV_CUSTOMIZE_HUD, getString(R.string.game_menu_customize_hud), () -> {
+            hideMenu();
+            game.showOverlayCustomizeDialog();
+        }));
         options.add(new MenuOption(ADV_FLOATING_BUTTON, getString(R.string.game_menu_toggle_floating_button), true,
                 game::toggleFloatingButtonVisibility));
         options.add(new MenuOption(ADV_SPECIAL_KEYS_TOGGLE, getString(R.string.game_menu_toggle_keyboard_model), true,

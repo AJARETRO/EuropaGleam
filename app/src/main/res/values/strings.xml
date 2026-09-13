@@ -1088,4 +1088,31 @@
     <string name="mobile_data_disconnected_title">📶 Mobile Data Guard Activated</string>
     <string name="mobile_data_disconnected_message">Stream was disconnected because Wi-Fi dropped and switched to cellular mobile data.\n\nEuropaGleam protected your cellular plan. You can allow mobile data streaming to continue or exit.</string>
     <string name="mobile_data_reconnect_button">Allow Mobile Data &amp; Reconnect</string>
+
+    <!-- Performance Top Bar & Metric Customization -->
+    <string name="title_pref_overlay_style">Overlay display style</string>
+    <string name="summary_pref_overlay_style">Choose between modern single-line top bar, lite pill, or classic box</string>
+    <string name="pref_overlay_style_top_bar">Top Bar (Sleek single-line - Recommended)</string>
+    <string name="pref_overlay_style_lite">Lite Pill</string>
+    <string name="pref_overlay_style_classic">Classic Detailed Box</string>
+
+    <string name="category_perf_overlay_elements">Overlay Metrics</string>
+    <string name="title_perf_show_fps">Incoming FPS</string>
+    <string name="summary_perf_show_fps">Show incoming stream frame rate</string>
+    <string name="title_perf_show_ping">Ping (Network Latency)</string>
+    <string name="summary_perf_show_ping">Show real-time round-trip latency to host</string>
+    <string name="title_perf_show_host_encode">Host Encode Time</string>
+    <string name="summary_perf_show_host_encode">Show remote PC video encoding latency</string>
+    <string name="title_perf_show_decode">Receiver Decode Time</string>
+    <string name="summary_perf_show_decode">Show local Android device video decoding latency</string>
+    <string name="title_perf_show_bitrate">Bitrate Monitor</string>
+    <string name="summary_perf_show_bitrate">Show real-time streaming bitrate in Mbps</string>
+    <string name="title_perf_show_cpu">CPU Usage</string>
+    <string name="summary_perf_show_cpu">Show real-time CPU utilization percentage</string>
+    <string name="title_perf_show_gpu">GPU Usage</string>
+    <string name="summary_perf_show_gpu">Show real-time GPU utilization percentage</string>
+
+    <string name="game_menu_customize_hud">Customize Overlay Stats...</string>
+    <string name="title_customize_perf_stats">Customize Performance Overlay</string>
 </resources>
+

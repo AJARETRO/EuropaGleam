@@ -431,7 +431,7 @@
         app:initialExpandedChildrenCount="1"
         app:iconSpaceReserved="false">
         <ListPreference
-            android:defaultValue="0"
+            android:defaultValue="2"
             android:entries="@array/mouse_mode_names"
             android:entryValues="@array/mouse_mode_values"
             android:key="mouse_mode_list"
@@ -957,6 +957,64 @@
             android:key="checkbox_enable_perf_overlay"
             android:summary="@string/summary_enable_perf_overlay"
             android:title="@string/title_enable_perf_overlay"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:defaultValue="0"
+            android:dependency="checkbox_enable_perf_overlay"
+            android:entries="@array/pref_overlay_style_names"
+            android:entryValues="@array/pref_overlay_style_values"
+            android:key="pref_overlay_style"
+            android:summary="@string/summary_pref_overlay_style"
+            android:title="@string/title_pref_overlay_style"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:dependency="checkbox_enable_perf_overlay"
+            android:key="pref_overlay_show_fps"
+            android:summary="@string/summary_perf_show_fps"
+            android:title="@string/title_perf_show_fps"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:dependency="checkbox_enable_perf_overlay"
+            android:key="pref_overlay_show_ping"
+            android:summary="@string/summary_perf_show_ping"
+            android:title="@string/title_perf_show_ping"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:dependency="checkbox_enable_perf_overlay"
+            android:key="pref_overlay_show_host_encode"
+            android:summary="@string/summary_perf_show_host_encode"
+            android:title="@string/title_perf_show_host_encode"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:dependency="checkbox_enable_perf_overlay"
+            android:key="pref_overlay_show_decode"
+            android:summary="@string/summary_perf_show_decode"
+            android:title="@string/title_perf_show_decode"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:dependency="checkbox_enable_perf_overlay"
+            android:key="pref_overlay_show_bitrate"
+            android:summary="@string/summary_perf_show_bitrate"
+            android:title="@string/title_perf_show_bitrate"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:dependency="checkbox_enable_perf_overlay"
+            android:key="pref_overlay_show_cpu"
+            android:summary="@string/summary_perf_show_cpu"
+            android:title="@string/title_perf_show_cpu"
+            app:iconSpaceReserved="false" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:dependency="checkbox_enable_perf_overlay"
+            android:key="pref_overlay_show_gpu"
+            android:summary="@string/summary_perf_show_gpu"
+            android:title="@string/title_perf_show_gpu"
             app:iconSpaceReserved="false" />
         <CheckBoxPreference
             android:defaultValue="false"
