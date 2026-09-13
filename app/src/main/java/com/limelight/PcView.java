@@ -62,6 +62,11 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 import android.widget.AdapterView.AdapterContextMenuInfo;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import android.os.PowerManager;
+import android.widget.Button;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
@@ -79,6 +84,36 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
     private boolean freezeUpdates, runningPolling, inForeground, completeOnCreateCalled;
     private ComputerDetails.AddressTuple pendingPairingAddress;
     private String pendingPairingPin, pendingPairingPassphrase;
+    private boolean batteryWarningDismissed = false;
+    private final BroadcastReceiver powerSaveReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            updateBatteryWarningBanner();
+        }
+    };
+
+    private void updateBatteryWarningBanner() {
+        View card = findViewById(R.id.batteryWarningCard);
+        if (card == null) {
+            return;
+        }
+        if (batteryWarningDismissed) {
+            card.setVisibility(View.GONE);
+            return;
+        }
+        com.limelight.utils.BatteryOptimizationHelper.BatteryStatus status =
+                com.limelight.utils.BatteryOptimizationHelper.getBatteryStatus(this);
+        if (status.hasAnyRestriction()) {
+            TextView text = findViewById(R.id.batteryWarningText);
+            if (text != null) {
+                text.setText(status.getShortStatusText(this) + " — " + getString(R.string.summary_battery_restrictions_banner));
+            }
+            card.setVisibility(View.VISIBLE);
+        } else {
+            card.setVisibility(View.GONE);
+        }
+    }
+
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder binder) {
             final ComputerManagerService.ComputerManagerBinder localBinder =
@@ -194,6 +229,29 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
         if (dualSenseBridgeButton != null) {
             dualSenseBridgeButton.setOnClickListener(v ->
                     startActivity(new Intent(PcView.this, DualSenseBridgeActivity.class)));
+        }
+
+        Button batteryWarningFixButton = findViewById(R.id.batteryWarningFixButton);
+        ImageButton batteryWarningDismissButton = findViewById(R.id.batteryWarningDismissButton);
+        if (batteryWarningFixButton != null) {
+            batteryWarningFixButton.setOnClickListener(v -> {
+                com.limelight.utils.BatteryOptimizationHelper.BatteryStatus status =
+                        com.limelight.utils.BatteryOptimizationHelper.getBatteryStatus(PcView.this);
+                if (status.isPowerSaveMode && !status.isBatteryOptimized && !status.isBackgroundRestricted) {
+                    com.limelight.utils.BatteryOptimizationHelper.openPowerSaverSettings(PcView.this);
+                } else {
+                    com.limelight.utils.BatteryOptimizationHelper.openBatterySettings(PcView.this);
+                }
+            });
+        }
+        if (batteryWarningDismissButton != null) {
+            batteryWarningDismissButton.setOnClickListener(v -> {
+                batteryWarningDismissed = true;
+                View card = findViewById(R.id.batteryWarningCard);
+                if (card != null) {
+                    card.setVisibility(View.GONE);
+                }
+            });
         }
 
         // Amazon review didn't like the help button because the wiki was not entirely
@@ -387,6 +445,11 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
 
         refreshProfileButton();
 
+        updateBatteryWarningBanner();
+        try {
+            registerReceiver(powerSaveReceiver, new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED));
+        } catch (Throwable ignored) {}
+
         inForeground = true;
         startComputerUpdates();
     }
@@ -394,6 +457,10 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
     @Override
     protected void onPause() {
         super.onPause();
+
+        try {
+            unregisterReceiver(powerSaveReceiver);
+        } catch (Throwable ignored) {}
 
         inForeground = false;
         stopComputerUpdates(false);

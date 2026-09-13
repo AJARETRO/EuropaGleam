@@ -7,12 +7,89 @@
     android:layout_height="match_parent"
     tools:context=".PcView">
 
+    <androidx.cardview.widget.CardView
+        android:id="@+id/batteryWarningCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/settingsButton"
+        android:layout_marginLeft="14dp"
+        android:layout_marginRight="14dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="6dp"
+        app:cardCornerRadius="12dp"
+        app:cardBackgroundColor="#2D1510"
+        app:cardElevation="3dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="10dp">
+
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@android:drawable/ic_dialog_alert"
+                app:tint="#F87171"
+                android:contentDescription="Battery Alert" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="6dp">
+
+                <TextView
+                    android:id="@+id/batteryWarningTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/battery_dialog_title"
+                    android:textColor="#FCA5A5"
+                    android:textStyle="bold"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/batteryWarningText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/summary_battery_restrictions_banner"
+                    android:textColor="#E2E8F0"
+                    android:textSize="11sp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/batteryWarningFixButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="@string/battery_fix_button"
+                android:textSize="10sp"
+                android:textColor="#FFFFFF"
+                app:backgroundTint="#EF4444"
+                style="@style/Widget.MaterialComponents.Button" />
+
+            <ImageButton
+                android:id="@+id/batteryWarningDismissButton"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                app:tint="#94A3B8"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Dismiss"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
     <RelativeLayout
         android:id="@+id/pcFragmentContainer"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:layout_below="@+id/settingsButton"
+        android:layout_below="@+id/batteryWarningCard"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:layout_alignParentRight="true"

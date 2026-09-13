@@ -1058,6 +1058,11 @@
             android:summary="@string/summary_keepalive_f15_mode"
             android:title="@string/title_keepalive_f15_mode"
             app:iconSpaceReserved="false" />
+        <Preference
+            android:key="pref_battery_restrictions_info"
+            android:summary="@string/battery_status_unrestricted"
+            android:title="@string/title_battery_restrictions"
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
     <PreferenceCategory

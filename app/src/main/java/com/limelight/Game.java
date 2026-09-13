@@ -2071,10 +2071,6 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 }
             }
 
-            if (conn != null && connected) {
-                conn.sendRequestIdrFrame();
-            }
-
             setInputGrabState(true);
         }
     }
@@ -4524,9 +4520,6 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (decoderRenderer != null) {
             decoderRenderer.notifyVideoForeground();
             decoderRenderer.setRenderTarget(holder.getSurface());
-            if (conn != null && connected) {
-                conn.sendRequestIdrFrame();
-            }
         }
     }
 

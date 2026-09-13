@@ -3988,6 +3988,13 @@ public class GameMenu implements Game.GameMenuCallbacks {
                 getString(R.string.title_keepalive_f15_mode) + ": " + keepaliveLabel,
                 () -> showKeepaliveModeMenu(device)));
 
+        com.limelight.utils.BatteryOptimizationHelper.BatteryStatus batteryStatus =
+                com.limelight.utils.BatteryOptimizationHelper.getBatteryStatus(game);
+        options.add(new MenuOption("bg_battery_status",
+                getString(R.string.title_battery_restrictions) + ": " +
+                        (batteryStatus.hasAnyRestriction() ? batteryStatus.getShortStatusText(game) : "Unrestricted ✓"),
+                () -> showBatteryStatusDialog(device)));
+
         options.add(new MenuOption(MENU_CANCEL, getString(R.string.game_menu_cancel), null));
         showMenuDialog(getString(R.string.game_menu_background_settings),
                 options.toArray(new MenuOption[0]), () -> showAdvancedMenu(device));
@@ -4024,6 +4031,22 @@ public class GameMenu implements Game.GameMenuCallbacks {
         options.add(new MenuOption(MENU_CANCEL, getString(R.string.game_menu_cancel), null));
         showMenuDialog(getString(R.string.title_keepalive_f15_mode),
                 options.toArray(new MenuOption[0]), () -> showBackgroundSettingsMenu(device));
+    }
+
+    private void showBatteryStatusDialog(GameInputDevice device) {
+        com.limelight.utils.BatteryOptimizationHelper.BatteryStatus status =
+                com.limelight.utils.BatteryOptimizationHelper.getBatteryStatus(game);
+        new AlertDialog.Builder(getThemedContext())
+                .setTitle(R.string.battery_dialog_title)
+                .setMessage(status.hasAnyRestriction() ? status.getDetailedMessage(game) : getString(R.string.battery_status_unrestricted))
+                .setPositiveButton(R.string.battery_dialog_open_battery_settings, (dialog, which) -> {
+                    com.limelight.utils.BatteryOptimizationHelper.openBatterySettings(game);
+                })
+                .setNeutralButton(R.string.battery_dialog_open_saver_settings, (dialog, which) -> {
+                    com.limelight.utils.BatteryOptimizationHelper.openPowerSaverSettings(game);
+                })
+                .setNegativeButton(R.string.game_menu_cancel, (dialog, which) -> showBackgroundSettingsMenu(device))
+                .show();
     }
 
     private void showVolumeButtonModeMenu(GameInputDevice device) {

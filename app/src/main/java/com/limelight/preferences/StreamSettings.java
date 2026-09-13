@@ -358,6 +358,30 @@ public class StreamSettings extends AppCompatActivity {
                     "checkbox_share_guide_quick_menu",
                     PreferenceConfiguration.QUICK_MENU_SHORTCUT_MODIFIER_PREF_STRING,
                     PreferenceConfiguration.QUICK_MENU_SHORTCUT_ACTIVATOR_PREF_STRING);
+            configureBatteryRestrictionsPreference();
+        }
+
+        private void configureBatteryRestrictionsPreference() {
+            Preference pref = findPreference("pref_battery_restrictions_info");
+            if (pref == null || getContext() == null) {
+                return;
+            }
+            com.limelight.utils.BatteryOptimizationHelper.BatteryStatus status =
+                    com.limelight.utils.BatteryOptimizationHelper.getBatteryStatus(getContext());
+            if (status.hasAnyRestriction()) {
+                pref.setSummary(status.getShortStatusText(getContext()) + "\n" +
+                        getString(R.string.summary_battery_restrictions_banner));
+            } else {
+                pref.setSummary(getString(R.string.battery_status_unrestricted));
+            }
+            pref.setOnPreferenceClickListener(p -> {
+                if (status.isPowerSaveMode && !status.isBatteryOptimized && !status.isBackgroundRestricted) {
+                    com.limelight.utils.BatteryOptimizationHelper.openPowerSaverSettings(getContext());
+                } else {
+                    com.limelight.utils.BatteryOptimizationHelper.openBatterySettings(getContext());
+                }
+                return true;
+            });
         }
 
         private void configureControllerShortcutPreference(String preferenceKey,

@@ -100,9 +100,14 @@ public class StreamKeepaliveService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
         );
 
+        String contentText = getString(R.string.notification_background_streaming_text);
+        if (com.limelight.utils.BatteryOptimizationHelper.hasAnyBatteryRestriction(this)) {
+            contentText += " " + getString(R.string.notification_battery_warning_suffix);
+        }
+
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(getString(R.string.notification_background_streaming_title))
-                .setContentText(getString(R.string.notification_background_streaming_text))
+                .setContentText(contentText)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)

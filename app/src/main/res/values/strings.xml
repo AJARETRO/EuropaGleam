@@ -1032,4 +1032,17 @@
     <string name="notification_background_streaming_title">EuropaGleam Streaming Active</string>
     <string name="notification_background_streaming_text">Tap to return to stream</string>
     <string name="notification_action_disconnect">Disconnect</string>
+    <!-- Battery Saver & Restriction Strings -->
+    <string name="title_battery_restrictions">Battery &amp; Background Restrictions</string>
+    <string name="summary_battery_restrictions_banner">Battery Saver or background restriction is ON. Background streaming may be throttled or disconnected by Android.</string>
+    <string name="battery_status_powersave_on">Battery Saver ON</string>
+    <string name="battery_status_optimized">Battery Usage: Optimized</string>
+    <string name="battery_status_background_restricted">Background Restricted</string>
+    <string name="battery_status_unrestricted">Unrestricted (Optimal)</string>
+    <string name="battery_fix_button">Fix in Settings</string>
+    <string name="battery_dialog_title">Battery Restrictions Detected</string>
+    <string name="battery_dialog_recommendation">To ensure background streaming is never killed or lagged by Android or system skins like Funtouch OS, please set EuropaGleam to \'Unrestricted\' and turn off Battery Saver.</string>
+    <string name="battery_dialog_open_battery_settings">Open Battery Settings</string>
+    <string name="battery_dialog_open_saver_settings">Open Power Saver Settings</string>
+    <string name="notification_battery_warning_suffix">• ⚠️ Battery Saver / Restriction Active</string>
 </resources>
