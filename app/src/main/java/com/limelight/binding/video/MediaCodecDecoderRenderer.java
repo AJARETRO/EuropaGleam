@@ -1919,7 +1919,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                 stats.decoderName = decoder;
 
                 StringBuilder sb = new StringBuilder();
-                if(prefs.enablePerfOverlayLite){
+                boolean useClassicMultiline = (prefs.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_CLASSIC) && !prefs.enablePerfOverlayLite;
+                if(!useClassicMultiline){
                     if(realtimeKBytesPerSec > 0){
                         sb.append(context.getString(R.string.perf_overlay_lite_bandwidth) + ": ");
                         if(realtimeKBytesPerSec >= 1000){

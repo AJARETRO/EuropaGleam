@@ -5147,10 +5147,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     public void onPerfUpdate(final String text) {
         runOnUiThread(() -> {
             if (prefConfig.enablePerfOverlay) {
-                if (prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_LITE) {
-                    if (performanceOverlayLite != null) performanceOverlayLite.setText(text);
-                } else if (prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_CLASSIC) {
+                if (prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_CLASSIC) {
                     if (performanceOverlayBig != null) performanceOverlayBig.setText(text);
+                } else {
+                    if (performanceOverlayLite != null) performanceOverlayLite.setText(text);
                 }
             }
         });
@@ -5430,7 +5430,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             if (performanceOverlayTopBar != null) performanceOverlayTopBar.setVisibility(View.VISIBLE);
             if (performanceOverlayLite != null) performanceOverlayLite.setVisibility(View.GONE);
             if (performanceOverlayBig != null) performanceOverlayBig.setVisibility(View.GONE);
-        } else if (prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_LITE) {
+        } else if (prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_CLASSIC) {
+            if (performanceOverlayTopBar != null) performanceOverlayTopBar.setVisibility(View.GONE);
+            if (performanceOverlayLite != null) performanceOverlayLite.setVisibility(View.GONE);
+            if (performanceOverlayBig != null) performanceOverlayBig.setVisibility(View.VISIBLE);
+        } else {
+            // Default: PERF_OVERLAY_STYLE_LITE (Old Top Side Performance Monitor)
             if (performanceOverlayTopBar != null) performanceOverlayTopBar.setVisibility(View.GONE);
             if (performanceOverlayLite != null) {
                 performanceOverlayLite.setVisibility(View.VISIBLE);
@@ -5439,17 +5444,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 }
             }
             if (performanceOverlayBig != null) performanceOverlayBig.setVisibility(View.GONE);
-        } else {
-            if (performanceOverlayTopBar != null) performanceOverlayTopBar.setVisibility(View.GONE);
-            if (performanceOverlayLite != null) performanceOverlayLite.setVisibility(View.GONE);
-            if (performanceOverlayBig != null) performanceOverlayBig.setVisibility(View.VISIBLE);
         }
     }
 
     public void toggleHUD() {
         prefConfig.enablePerfOverlay = !prefConfig.enablePerfOverlay;
         updatePerfOverlayVisibility();
-        if (prefConfig.enablePerfOverlay && lastPerfStats != null) {
+        if (prefConfig.enablePerfOverlay && prefConfig.perfOverlayStyle == PreferenceConfiguration.PERF_OVERLAY_STYLE_TOP_BAR && lastPerfStats != null) {
             onPerfStatsUpdate(lastPerfStats);
         }
     }
@@ -5488,13 +5489,15 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     prefConfig.perfOverlayShowCpu = checked[5];
                     prefConfig.perfOverlayShowGpu = checked[6];
 
-                    // Enable overlay if not already visible
+                    // Enable overlay and switch to Top Bar style when customizing metrics
                     prefConfig.enablePerfOverlay = true;
+                    prefConfig.perfOverlayStyle = PreferenceConfiguration.PERF_OVERLAY_STYLE_TOP_BAR;
                     updatePerfOverlayVisibility();
 
                     ProfilesManager.getInstance().getOverlayingSharedPreferences(this)
                             .edit()
                             .putBoolean("checkbox_enable_perf_overlay", true)
+                            .putString("pref_overlay_style", String.valueOf(PreferenceConfiguration.PERF_OVERLAY_STYLE_TOP_BAR))
                             .putBoolean("pref_overlay_show_fps", checked[0])
                             .putBoolean("pref_overlay_show_ping", checked[1])
                             .putBoolean("pref_overlay_show_host_encode", checked[2])

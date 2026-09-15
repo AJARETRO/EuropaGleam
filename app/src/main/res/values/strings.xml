@@ -1094,10 +1094,10 @@
 
     <!-- Performance Top Bar & Metric Customization -->
     <string name="title_pref_overlay_style">Overlay display style</string>
-    <string name="summary_pref_overlay_style">Choose between modern single-line top bar, lite pill, or classic box</string>
-    <string name="pref_overlay_style_top_bar">Top Bar (Sleek single-line - Recommended)</string>
-    <string name="pref_overlay_style_lite">Lite Pill</string>
-    <string name="pref_overlay_style_classic">Classic Detailed Box</string>
+    <string name="summary_pref_overlay_style">Choose between clean top-side lite HUD, extended top bar, or classic debug</string>
+    <string name="pref_overlay_style_lite">Top Side Lite HUD (Default)</string>
+    <string name="pref_overlay_style_top_bar">Extended Top Bar (with CPU/GPU)</string>
+    <string name="pref_overlay_style_classic">Classic Multi-line Debug (Legacy)</string>
 
     <string name="category_perf_overlay_elements">Overlay Metrics</string>
     <string name="title_perf_show_fps">Incoming FPS</string>

@@ -1076,7 +1076,7 @@
             android:title="@string/title_perf_show_gpu"
             app:iconSpaceReserved="false" />
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:dependency="checkbox_enable_perf_overlay"
             android:key="checkbox_enable_perf_overlay_lite"
             android:summary="@string/summary_checkbox_enable_perf_overlay_lite"

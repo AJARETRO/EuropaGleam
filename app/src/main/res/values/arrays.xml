@@ -246,8 +246,8 @@
     </string-array>
 
     <string-array name="pref_overlay_style_names">
-        <item>@string/pref_overlay_style_top_bar</item>
         <item>@string/pref_overlay_style_lite</item>
+        <item>@string/pref_overlay_style_top_bar</item>
         <item>@string/pref_overlay_style_classic</item>
     </string-array>
     <string-array name="pref_overlay_style_values" translatable="false">

@@ -361,11 +361,11 @@ public class PreferenceConfiguration {
 
     public boolean enablePerfOverlayBottom;
 
-    public static final int PERF_OVERLAY_STYLE_TOP_BAR = 0;
-    public static final int PERF_OVERLAY_STYLE_LITE = 1;
+    public static final int PERF_OVERLAY_STYLE_LITE = 0;
+    public static final int PERF_OVERLAY_STYLE_TOP_BAR = 1;
     public static final int PERF_OVERLAY_STYLE_CLASSIC = 2;
 
-    public int perfOverlayStyle = PERF_OVERLAY_STYLE_TOP_BAR;
+    public int perfOverlayStyle = PERF_OVERLAY_STYLE_LITE;
     public boolean perfOverlayShowFps = true;
     public boolean perfOverlayShowPing = true;
     public boolean perfOverlayShowHostEncode = true;
@@ -1011,6 +1011,16 @@ private static int getFramePacingValue(Context context) {
             prefs.edit().putBoolean("mouse_mode_touchpad_default_applied_v2", true).apply();
         }
 
+        // One-time migration: ensure default HUD style is top-side Lite HUD (0) and enablePerfOverlayLite is true
+        if (!prefs.contains("pref_overlay_style") || !prefs.getBoolean("pref_overlay_lite_default_applied_v5", false)) {
+            String currentStyle = prefs.getString("pref_overlay_style", "0");
+            if (!"1".equals(currentStyle) && !"2".equals(currentStyle)) {
+                prefs.edit().putString("pref_overlay_style", "0").apply();
+            }
+            prefs.edit().putBoolean("checkbox_enable_perf_overlay_lite", true).apply();
+            prefs.edit().putBoolean("pref_overlay_lite_default_applied_v5", true).apply();
+        }
+
         // Read mouse mode and set touch settings accordingly
         String mouseMode = prefs.getString("mouse_mode_list", "2");
         int mouseModeInt = Integer.parseInt(mouseMode);
@@ -1042,14 +1052,14 @@ private static int getFramePacingValue(Context context) {
         config.enablePip = prefs.getBoolean(ENABLE_PIP_PREF_STRING, DEFAULT_ENABLE_PIP);
         config.enablePerfOverlay = prefs.getBoolean(ENABLE_PERF_OVERLAY_STRING, DEFAULT_ENABLE_PERF_OVERLAY);
         config.enablePerfLogging = prefs.getBoolean(ENABLE_PERF_LOGGING, DEFAULT_ENABLE_PERF_LOGGING);
-        config.enablePerfOverlayLite = prefs.getBoolean("checkbox_enable_perf_overlay_lite",DEFAULT_ENABLE_PERF_OVERLAY);
-        config.enablePerfOverlayBottom = prefs.getBoolean("checkbox_enable_perf_overlay_bottom",DEFAULT_PERF_OVERLAY_BOTTOM);
+        config.enablePerfOverlayLite = prefs.getBoolean("checkbox_enable_perf_overlay_lite", true);
+        config.enablePerfOverlayBottom = prefs.getBoolean("checkbox_enable_perf_overlay_bottom", DEFAULT_PERF_OVERLAY_BOTTOM);
 
         String overlayStyleStr = prefs.getString("pref_overlay_style", "0");
         try {
             config.perfOverlayStyle = Integer.parseInt(overlayStyleStr);
         } catch (NumberFormatException e) {
-            config.perfOverlayStyle = PERF_OVERLAY_STYLE_TOP_BAR;
+            config.perfOverlayStyle = PERF_OVERLAY_STYLE_LITE;
         }
 
         config.perfOverlayShowFps = prefs.getBoolean("pref_overlay_show_fps", true);
