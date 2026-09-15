@@ -24,8 +24,8 @@ public class AndroidAudioRenderer implements AudioRenderer {
 
     private AudioTrack track;
     private int channelCount;
-    private final ArrayBlockingQueue<short[]> audioWriteQueue = new ArrayBlockingQueue<>(4);
-    private final ArrayBlockingQueue<short[]> freeAudioBuffers = new ArrayBlockingQueue<>(6);
+    private final ArrayBlockingQueue<short[]> audioWriteQueue = new ArrayBlockingQueue<>(16);
+    private final ArrayBlockingQueue<short[]> freeAudioBuffers = new ArrayBlockingQueue<>(24);
     private volatile boolean audioWriterRunning;
     private Thread audioWriterThread;
     private static volatile boolean muted = false;
@@ -220,8 +220,8 @@ public class AndroidAudioRenderer implements AudioRenderer {
             recycleQueuedAudio();
             return;
         }
-        // Only queue up to 40 ms of pending audio data in addition to what AudioTrack is buffering for us.
-        if (MoonBridge.getPendingAudioDuration() < 40) {
+        // Only queue up to 80 ms of pending audio data in addition to what AudioTrack is buffering for us.
+        if (MoonBridge.getPendingAudioDuration() < 80) {
             // Keep AudioTrack blocking and exact on its own audio-priority thread.
             // A non-blocking write may accept only part of this PCM block; dropping
             // the remainder creates clicks and eventually an AudioTrack underrun.
@@ -300,12 +300,16 @@ public class AndroidAudioRenderer implements AudioRenderer {
         freeAudioBuffers.clear();
         // All steady-state PCM storage is allocated once. Cloning every decoded
         // block caused periodic 8 MB young-GC cycles and process-wide audio gaps.
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 24; i++) {
             freeAudioBuffers.add(new short[samplesPerDecodedFrame]);
         }
         audioWriterRunning = true;
         audioWriterThread = new Thread(() -> {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
+            try {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
+            } catch (Throwable t) {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
+            }
             while (audioWriterRunning && !Thread.currentThread().isInterrupted()) {
                 final short[] pcm;
                 try {

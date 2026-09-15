@@ -111,6 +111,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
     private static final String MENU_DUALSENSE_MICROPHONE = "dualsense_microphone";
     private static final String MENU_DUALSENSE_AUDIO_ROUTE = "dualsense_audio_route";
     private static final String MENU_GYRO_AXIS_MAPPING = "gyro_axis_mapping";
+    private static final String MENU_PIP = "pip";
     private static final String MENU_CANCEL = "cancel";
 
     private static final String ADV_MOUSE_MODE = "advanced_mouse_mode";
@@ -144,6 +145,7 @@ public class GameMenu implements Game.GameMenuCallbacks {
             MENU_TOGGLE_KEYBOARD,
             MENU_ZOOM_MODE,
             MENU_ROTATE_SCREEN,
+            MENU_PIP,
             MENU_GYRO_AXIS_MAPPING,
             MENU_DUALSENSE_BRIDGE,
             MENU_DUALSENSE_MICROPHONE,
@@ -4147,6 +4149,10 @@ public class GameMenu implements Game.GameMenuCallbacks {
         if (dialogScreenContext == game) {
             options.add(new MenuOption(MENU_ROTATE_SCREEN, getString(R.string.game_menu_rotate_screen), true,
                     game::rotateScreen));
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            options.add(new MenuOption(MENU_PIP, getString(R.string.game_menu_pip), true,
+                    game::enterPipMode));
         }
         options.add(new MenuOption(MENU_GYRO_AXIS_MAPPING,
                 getString(R.string.game_menu_gyro_axis_mapping),

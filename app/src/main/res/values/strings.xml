@@ -1032,6 +1032,9 @@
     <string name="notification_background_streaming_title">EuropaGleam Streaming Active</string>
     <string name="notification_background_streaming_text">Tap to return to stream</string>
     <string name="notification_action_disconnect">Disconnect</string>
+    <string name="notification_action_pip">Open PiP</string>
+    <string name="game_menu_pip">Picture-in-Picture</string>
+    <string name="pip_not_supported_external">Picture-in-Picture is not supported on external displays</string>
     <!-- Battery Saver & Restriction Strings -->
     <string name="title_battery_restrictions">Battery &amp; Background Restrictions</string>
     <string name="summary_battery_restrictions_banner">Battery Saver or background restriction is ON. Background streaming may be throttled or disconnected by Android.</string>

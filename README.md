@@ -65,6 +65,20 @@ EuropaGleam provides native end-to-end DualSense features:
 - **Controller Audio & Headset Detection**: Audio routed to the DualSense controller speaker or 3.5mm headset jack with automatic fallback.
 - **Mute Button**: Physical mute button controls client microphone forwarding.
 
+### 🖼️ Picture-in-Picture (PiP) Floating Stream
+Multi-task effortlessly without losing sight of your PC game:
+- **Instant Floating Window**: Launch PiP directly from the persistent background notification ("Open PiP"), the in-game quick menu, or by pressing Home.
+- **View-Only Mode**: Input capture and touch gestures are automatically paused while in PiP to prevent accidental inputs on your PC.
+- **One-Tap Fullscreen**: A simple tap brings up the clean Android maximize control to return to fullscreen instantly.
+- **Swipe-Down to Background Stream**: Dragging the floating window to the bottom of your screen seamlessly transitions to background streaming (audio stays active and keepalive runs) without disconnecting your cloud PC session.
+- **Crash-Free Decoder Protection**: Decoder surface rendering remains fully foregrounded during window resizes and PiP transitions, completely eliminating the black-screen crashes common in other clients.
+
+### 🔊 Prioritized Real-Time Audio Pipeline
+Crystal-clear, stutter-free game audio even when video or network spikes occur:
+- **Urgent Kernel Thread Priority**: Both native Opus decoder threads and the Android AudioTrack writer run with maximum real-time priority (`THREAD_PRIORITY_URGENT_AUDIO` nice `-19`).
+- **Wi-Fi WMM Voice QoS & DSCP 46 (EF)**: Real-time audio RTP UDP packets are tagged with DSCP 46 (Expedited Forwarding) and Linux socket priority 6 (WMM AC_VO), ensuring home routers and phone network stacks prioritize audio packets ahead of heavy video payloads.
+- **Expanded Jitter Resilience**: Audio buffer pool expanded to 24 frames and 80ms tolerance, completely preventing crackles, audio drops, and young-GC latency gaps.
+
 ### 🔋 Uninterrupted Background Streaming
 - Backed by a persistent foreground service (`dev.ajaretro.europagleam`).
 - Stream audio and connection remain alive when answering a notification, minimizing the app, or switching tasks.

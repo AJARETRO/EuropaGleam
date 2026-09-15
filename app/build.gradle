@@ -8,14 +8,14 @@ android {
 
     namespace 'com.limelight'
 
-    def appVersionName = project.hasProperty('versionName') ? project.property('versionName') : "20.2.6-europa9"
+    def appVersionName = project.hasProperty('versionName') ? project.property('versionName') : "20.2.6-europa10"
 
     defaultConfig {
         minSdk 21
         targetSdk 31
 
         versionName appVersionName
-        versionCode = 59
+        versionCode = 60
 
         // Generate native debug symbols to allow Google Play to symbolicate our native crashes
         ndk.debugSymbolLevel = 'FULL'
@@ -177,4 +177,17 @@ dependencies {
     testImplementation 'androidx.test:core:1.7.0'
     testImplementation 'org.robolectric:robolectric:4.16'
     testImplementation 'org.mockito:mockito-core:5.19.0'
+}
+
+preBuild.doFirst {
+    def patchFile = rootProject.file("patches/moonlight-common-c-audio-priority.patch")
+    def targetDir = file("src/main/jni/moonlight-core/moonlight-common-c")
+    if (patchFile.exists() && targetDir.exists()) {
+        try {
+            def process = new ProcessBuilder("patch", "-p1", "-N", "-r", "-", "-d", targetDir.absolutePath)
+                    .redirectInput(patchFile)
+                    .start()
+            process.waitFor()
+        } catch (Exception ignored) {}
+    }
 }

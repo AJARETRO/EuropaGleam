@@ -1413,6 +1413,20 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         int top = viewLocation[1];
         int width = view.getWidth();
         int height = view.getHeight();
+        if (width <= 0 || height <= 0) {
+            width = displayWidth > 0 ? displayWidth : 1920;
+            height = displayHeight > 0 ? displayHeight : 1080;
+        }
+
+        // Ensure aspect ratio is strictly within Android's allowed PiP bounds [0.418410f, 2.390000f]
+        float ratio = (float) width / (float) height;
+        if (ratio < 0.418410f) {
+            width = 419;
+            height = 1000;
+        } else if (ratio > 2.390000f) {
+            width = 239;
+            height = 100;
+        }
         Rational aspectRatio = new Rational(width, height);
         hint = new Rect(left, top, left + width, top + height);
 
@@ -1439,6 +1453,24 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
 
         return builder.build();
+    }
+
+    public void enterPipMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (isOnExternalDisplay()) {
+                Toast.makeText(this, R.string.pip_not_supported_external, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            hideGameMenu();
+            try {
+                if (decoderRenderer != null) {
+                    decoderRenderer.notifyVideoForeground();
+                }
+                enterPictureInPictureMode(getPictureInPictureParams(false));
+            } catch (Exception e) {
+                LimeLog.warning("Failed to enter PiP: " + e.getMessage());
+            }
+        }
     }
 
     public void updatePipAutoEnter() {
@@ -1508,6 +1540,95 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             enterPictureInPictureMode(getPictureInPictureParams(false));
         }
         return true;
+    }
+
+    @Override
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+        LimeLog.info("onPictureInPictureModeChanged: " + isInPictureInPictureMode);
+
+        if (isInPictureInPictureMode) {
+            isInBackground = false;
+
+            // Ensure video decoder renders to the floating PiP surface
+            if (decoderRenderer != null) {
+                decoderRenderer.notifyVideoForeground();
+                if (streamContainer != null && streamContainer.getSurface() != null && streamContainer.getSurface().isValid()) {
+                    decoderRenderer.setRenderTarget(streamContainer.getSurface());
+                }
+            }
+
+            // Input is view-only in PiP mode: disable touch & input grab
+            setInputGrabState(false);
+            if (controllerHandler != null) {
+                controllerHandler.disableSensors();
+            }
+
+            // Hide overlays while floating
+            if (floatingMenuButton != null) {
+                floatingMenuButton.setVisibility(View.GONE);
+            }
+            if (overlayToggleButton != null) {
+                overlayToggleButton.setVisibility(View.GONE);
+            }
+            if (virtualController != null) {
+                virtualController.hide();
+            }
+            if (keyBoardController != null && keyBoardController.shown) {
+                keyBoardController.hide(true);
+            }
+            if (keyBoardLayoutController != null && keyBoardLayoutController.shown) {
+                keyBoardLayoutController.hide(true);
+            }
+            if (onScreenMacroDock != null) {
+                onScreenMacroDock.setVisible(false);
+            }
+            hideGameMenu();
+            if (performanceOverlayView != null) {
+                performanceOverlayView.setVisibility(View.GONE);
+            }
+            if (notificationOverlayView != null) {
+                notificationOverlayView.setVisibility(View.GONE);
+            }
+
+            UiHelper.notifyStreamEnteringPiP(this);
+        } else {
+            // Exiting PiP mode back to fullscreen
+            if (decoderRenderer != null) {
+                decoderRenderer.notifyVideoForeground();
+                if (streamContainer != null && streamContainer.getSurface() != null && streamContainer.getSurface().isValid()) {
+                    decoderRenderer.setRenderTarget(streamContainer.getSurface());
+                }
+            }
+
+            if (!isFinishing()) {
+                setInputGrabState(true);
+                if (controllerHandler != null) {
+                    controllerHandler.enableSensors();
+                }
+
+                if (floatingMenuButton != null && prefConfig != null && prefConfig.enableFloatingButton) {
+                    floatingMenuButton.setVisibility(View.VISIBLE);
+                }
+                if (overlayToggleButton != null && overlayToggleZoomButtonShown) {
+                    overlayToggleButton.setVisibility(View.VISIBLE);
+                }
+                if (virtualController != null) {
+                    virtualController.show();
+                }
+                if (onScreenMacroDock != null && prefConfig != null && prefConfig.onscreenMacroDock) {
+                    onScreenMacroDock.setVisible(true);
+                }
+                if (prefConfig != null && prefConfig.enablePerfOverlay && performanceOverlayView != null) {
+                    performanceOverlayView.setVisibility(View.VISIBLE);
+                }
+                if (notificationOverlayView != null) {
+                    notificationOverlayView.setVisibility(requestedNotificationOverlayVisibility);
+                }
+
+                UiHelper.notifyStreamExitingPiP(this);
+            }
+        }
     }
 
     @Override
@@ -1798,10 +1919,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // that case here too.
         if (isInMultiWindowMode) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            decoderRenderer.notifyVideoBackground();
         }
         else {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
+        if (decoderRenderer != null) {
             decoderRenderer.notifyVideoForeground();
         }
 
@@ -2105,13 +2227,28 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
     }
 
+    private boolean isExplicitDisconnect = false;
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (intent != null && StreamKeepaliveService.ACTION_DISCONNECT.equals(intent.getAction())) {
+            isExplicitDisconnect = true;
             stopConnection();
             finish();
+        } else if (intent != null && StreamKeepaliveService.ACTION_ENTER_PIP.equals(intent.getAction())) {
+            enterPipMode();
         }
+    }
+
+    @Override
+    public void finish() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode() && prefConfig != null && prefConfig.enableBackgroundStreaming && !isExplicitDisconnect) {
+            LimeLog.info("PiP window dismissed by user: transitioning to background streaming without ending session");
+            moveTaskToBack(true);
+            return;
+        }
+        super.finish();
     }
 
     public void updateBackgroundStreamingPref(boolean enabled) {
@@ -5053,6 +5190,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             showGameMenu(null);
             return;
         }
+        isExplicitDisconnect = true;
         super.onBackPressed();
     }
 
@@ -5380,6 +5518,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     public void disconnect() {
+        isExplicitDisconnect = true;
         if (prefConfig.smartClipboardSync) {
             getClipboard(-1);
         }
@@ -5398,6 +5537,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         builder.setMessage(R.string.game_dialog_message_quit_confirm);
 
         builder.setPositiveButton(getString(R.string.yes), (dialog, which) -> {
+            isExplicitDisconnect = true;
             quitOnStop = true;
             dialog.dismiss();
             finish();

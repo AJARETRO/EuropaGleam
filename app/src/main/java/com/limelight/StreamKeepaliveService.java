@@ -21,6 +21,7 @@ public class StreamKeepaliveService extends Service {
     public static final String ACTION_START = "com.limelight.START_BACKGROUND_STREAM";
     public static final String ACTION_STOP = "com.limelight.STOP_BACKGROUND_STREAM";
     public static final String ACTION_DISCONNECT = "com.limelight.DISCONNECT_BACKGROUND_STREAM";
+    public static final String ACTION_ENTER_PIP = "com.limelight.ENTER_PIP_FROM_NOTIFICATION";
 
     private static final String CHANNEL_ID = "europagleam_bg_stream";
     private static final int NOTIFICATION_ID = 90210;
@@ -138,12 +139,23 @@ public class StreamKeepaliveService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
         );
 
+        // PendingIntent for Open PiP action button
+        Intent pipIntent = new Intent(this, Game.class);
+        pipIntent.setAction(ACTION_ENTER_PIP);
+        pipIntent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pipPendingIntent = PendingIntent.getActivity(
+                this,
+                2,
+                pipIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+        );
+
         String contentText = getString(R.string.notification_background_streaming_text);
         if (com.limelight.utils.BatteryOptimizationHelper.hasAnyBatteryRestriction(this)) {
             contentText += " " + getString(R.string.notification_battery_warning_suffix);
         }
 
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(getString(R.string.notification_background_streaming_title))
                 .setContentText(contentText)
                 .setSmallIcon(R.mipmap.ic_launcher)
@@ -154,8 +166,17 @@ public class StreamKeepaliveService extends Service {
                         android.R.drawable.ic_menu_close_clear_cancel,
                         getString(R.string.notification_action_disconnect),
                         disconnectPendingIntent
-                )
-                .build();
+                );
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.addAction(
+                    android.R.drawable.ic_menu_slideshow,
+                    getString(R.string.notification_action_pip),
+                    pipPendingIntent
+            );
+        }
+
+        return builder.build();
     }
 
     @Override
