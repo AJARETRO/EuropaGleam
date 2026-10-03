@@ -66,6 +66,7 @@ import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.app.PendingIntent;
 import android.app.PictureInPictureParams;
 import android.app.RemoteAction;
 import android.graphics.drawable.Icon;
@@ -2261,8 +2262,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         if (pendingEnterPip) {
             pendingEnterPip = false;
-            if (rootView != null) {
-                rootView.post(this::enterPipMode);
+            if (getWindow() != null && getWindow().getDecorView() != null) {
+                getWindow().getDecorView().post(this::enterPipMode);
             } else {
                 enterPipMode();
             }
