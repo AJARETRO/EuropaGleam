@@ -116,9 +116,10 @@ jobs:
           TAG="${{ env.RELEASE_TAG }}"
           TITLE="${{ env.RELEASE_TITLE }}"
 
-          # Find apksigner
+          # Find apksigner and zipalign
           BUILD_TOOLS_DIR=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
           APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+          ZIPALIGN="$BUILD_TOOLS_DIR/zipalign"
 
           # Keystore setup: use secret if available, otherwise use committed repository release.keystore
           KEYSTORE="app/release.keystore"
@@ -134,20 +135,28 @@ jobs:
             echo "Using official committed EuropaGleam release keystore ($KEYSTORE)..."
           fi
 
-          # Sign all NonRoot APKs (standard user APKs: universal, arm64-v8a, armeabi-v7a, x86, x86_64)
+          # Sign and align all NonRoot APKs (standard user APKs: universal, arm64-v8a, armeabi-v7a, x86, x86_64)
           find app/build/outputs/apk/nonRoot_game/release -type f -name "*.apk" | while read -r apk; do
             base=$(basename "$apk" .apk | sed -E 's/app-//; s/-release//; s/-unsigned//')
             out="release_assets/EuropaGleam-${TAG}-${base}.apk"
-            $APKSIGNER sign --ks $KEYSTORE --ks-pass pass:$KS_PASS --ks-key-alias $ALIAS --key-pass pass:$KS_PASS --out "$out" "$apk"
-            echo "Signed and created: $out"
+            aligned="release_assets/aligned-${base}.apk"
+            $ZIPALIGN -p -f 4 "$apk" "$aligned"
+            $APKSIGNER sign --ks $KEYSTORE --ks-pass pass:$KS_PASS --ks-key-alias $ALIAS --key-pass pass:$KS_PASS --out "$out" "$aligned"
+            rm -f "$aligned"
+            $APKSIGNER verify --verbose "$out"
+            echo "Signed, aligned, and verified: $out"
           done
 
-          # Sign all Root APKs
+          # Sign and align all Root APKs
           find app/build/outputs/apk/root/release -type f -name "*.apk" | while read -r apk; do
             base=$(basename "$apk" .apk | sed -E 's/app-//; s/-release//; s/-unsigned//')
             out="release_assets/EuropaGleam-${TAG}-${base}.apk"
-            $APKSIGNER sign --ks $KEYSTORE --ks-pass pass:$KS_PASS --ks-key-alias $ALIAS --key-pass pass:$KS_PASS --out "$out" "$apk"
-            echo "Signed and created: $out"
+            aligned="release_assets/aligned-${base}.apk"
+            $ZIPALIGN -p -f 4 "$apk" "$aligned"
+            $APKSIGNER sign --ks $KEYSTORE --ks-pass pass:$KS_PASS --ks-key-alias $ALIAS --key-pass pass:$KS_PASS --out "$out" "$aligned"
+            rm -f "$aligned"
+            $APKSIGNER verify --verbose "$out"
+            echo "Signed, aligned, and verified: $out"
           done
 
           # Compute SHA-256 checksums

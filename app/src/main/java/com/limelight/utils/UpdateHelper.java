@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -21,15 +23,18 @@ import com.limelight.R;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 /**
  * Intelligent in-app auto-updater for EuropaGleam.
@@ -65,29 +70,26 @@ public class UpdateHelper {
 
         executor.execute(() -> {
             try {
-                URL url = new URL(GITHUB_LATEST_RELEASE_API);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
-                conn.setRequestProperty("User-Agent", "EuropaGleam-App");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
+                OkHttpClient client = new OkHttpClient.Builder()
+                        .connectTimeout(15, TimeUnit.SECONDS)
+                        .readTimeout(15, TimeUnit.SECONDS)
+                        .build();
 
-                int responseCode = conn.getResponseCode();
-                if (responseCode != HttpURLConnection.HTTP_OK) {
-                    throw new Exception("HTTP " + responseCode);
+                Request request = new Request.Builder()
+                        .url(GITHUB_LATEST_RELEASE_API)
+                        .header("Accept", "application/vnd.github.v3+json")
+                        .header("User-Agent", "EuropaGleam-App")
+                        .build();
+
+                Response apiResponse = client.newCall(request).execute();
+                if (!apiResponse.isSuccessful() || apiResponse.body() == null) {
+                    throw new Exception("HTTP " + apiResponse.code());
                 }
 
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    response.append(line);
-                }
-                reader.close();
-                conn.disconnect();
+                String responseStr = apiResponse.body().string();
+                apiResponse.close();
 
-                JSONObject json = new JSONObject(response.toString());
+                JSONObject json = new JSONObject(responseStr);
                 String tagName = json.optString("tag_name", "");
                 String releaseName = json.optString("name", tagName);
                 String body = json.optString("body", "");
@@ -296,6 +298,20 @@ public class UpdateHelper {
     }
 
     private static void downloadAndInstallApk(final Activity activity, final ReleaseInfo releaseInfo) {
+        File cacheDir = activity.getExternalCacheDir();
+        if (cacheDir == null) {
+            cacheDir = activity.getCacheDir();
+        }
+        final File targetApk = new File(cacheDir, "EuropaGleam_update.apk");
+
+        // If an APK is already downloaded with valid size, launch installer immediately
+        if (targetApk.exists() && targetApk.length() > 5 * 1024 * 1024 &&
+                (releaseInfo.assetSize <= 0 || targetApk.length() == releaseInfo.assetSize)) {
+            targetApk.setReadable(true, false);
+            installApk(activity, targetApk);
+            return;
+        }
+
         final ProgressDialog progressDialog = new ProgressDialog(activity);
         progressDialog.setTitle(R.string.update_downloading_title);
         progressDialog.setMessage(activity.getString(R.string.update_downloading_message, releaseInfo.assetName != null ? releaseInfo.assetName : "EuropaGleam.apk"));
@@ -305,39 +321,39 @@ public class UpdateHelper {
         progressDialog.show();
 
         executor.execute(() -> {
-            File tempApk = null;
+            File tempApk = targetApk;
             try {
-                URL url = new URL(releaseInfo.downloadUrl);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setInstanceFollowRedirects(true);
-                conn.connect();
-
-                int responseCode = conn.getResponseCode();
-                // Follow redirects (e.g. HTTP 302 to GitHub AWS S3 bucket)
-                if (responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
-                        responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
-                        responseCode == 307 || responseCode == 308) {
-                    String redirectUrl = conn.getHeaderField("Location");
-                    conn.disconnect();
-                    url = new URL(redirectUrl);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.connect();
-                }
-
-                int fileLength = conn.getContentLength();
-                File cacheDir = activity.getExternalCacheDir();
-                if (cacheDir == null) {
-                    cacheDir = activity.getCacheDir();
-                }
-                tempApk = new File(cacheDir, "EuropaGleam_update.apk");
                 if (tempApk.exists()) {
                     tempApk.delete();
                 }
 
-                InputStream input = conn.getInputStream();
+                OkHttpClient client = new OkHttpClient.Builder()
+                        .followRedirects(true)
+                        .followSslRedirects(true)
+                        .connectTimeout(20, TimeUnit.SECONDS)
+                        .readTimeout(90, TimeUnit.SECONDS)
+                        .build();
+
+                Request request = new Request.Builder()
+                        .url(releaseInfo.downloadUrl)
+                        .header("User-Agent", "EuropaGleam-App")
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                if (!response.isSuccessful()) {
+                    throw new Exception("HTTP " + response.code());
+                }
+
+                ResponseBody body = response.body();
+                if (body == null) {
+                    throw new Exception("Empty response body");
+                }
+
+                long fileLength = body.contentLength();
+                InputStream input = body.byteStream();
                 FileOutputStream output = new FileOutputStream(tempApk);
 
-                byte[] data = new byte[8192];
+                byte[] data = new byte[16384];
                 long total = 0;
                 int count;
                 while ((count = input.read(data)) != -1) {
@@ -352,7 +368,13 @@ public class UpdateHelper {
                 output.flush();
                 output.close();
                 input.close();
-                conn.disconnect();
+                response.close();
+
+                tempApk.setReadable(true, false);
+
+                if (tempApk.length() < 5 * 1024 * 1024) {
+                    throw new Exception("Downloaded file too small (" + tempApk.length() + " bytes)");
+                }
 
                 final File finalApk = tempApk;
                 mainHandler.post(() -> {
@@ -364,6 +386,9 @@ public class UpdateHelper {
 
             } catch (Exception e) {
                 LimeLog.warning("Download failed: " + e.getMessage());
+                if (tempApk != null && tempApk.exists()) {
+                    tempApk.delete();
+                }
                 mainHandler.post(() -> {
                     if (progressDialog.isShowing()) {
                         progressDialog.dismiss();
@@ -379,7 +404,12 @@ public class UpdateHelper {
     }
 
     private static void installApk(Activity activity, File apkFile) {
-        if (activity == null || apkFile == null || !apkFile.exists()) return;
+        if (activity == null || apkFile == null || !apkFile.exists() || apkFile.length() < 1024 * 1024) {
+            if (activity != null) {
+                Toast.makeText(activity, "APK file missing or invalid", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -392,6 +422,8 @@ public class UpdateHelper {
                 }
             }
 
+            apkFile.setReadable(true, false);
+
             Uri apkUri = FileProvider.getUriForFile(
                     activity,
                     activity.getPackageName() + ".fileprovider",
@@ -402,6 +434,20 @@ public class UpdateHelper {
             installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
             installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            installIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            installIntent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+
+            // Grant read permission to all packages that can handle this install intent
+            PackageManager pm = activity.getPackageManager();
+            List<ResolveInfo> resolveInfoList = pm.queryIntentActivities(installIntent, PackageManager.MATCH_DEFAULT_ONLY);
+            if (resolveInfoList != null) {
+                for (ResolveInfo resolveInfo : resolveInfoList) {
+                    if (resolveInfo.activityInfo != null && resolveInfo.activityInfo.packageName != null) {
+                        activity.grantUriPermission(resolveInfo.activityInfo.packageName, apkUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    }
+                }
+            }
+
             activity.startActivity(installIntent);
 
         } catch (Exception e) {
