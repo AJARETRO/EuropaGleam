@@ -67,6 +67,8 @@ import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.app.PictureInPictureParams;
+import android.app.RemoteAction;
+import android.graphics.drawable.Icon;
 import android.app.Service;
 import android.content.ClipData;
 import android.content.ClipDescription;
@@ -1398,42 +1400,67 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     @TargetApi(Build.VERSION_CODES.O)
     private PictureInPictureParams getPictureInPictureParams(boolean autoEnter) {
         View view;
-        Rect hint;
-        if (prefConfig.videoScaleMode == PreferenceConfiguration.ScaleMode.FIT && streamContainer.getScaleX() == 1) {
+        if (prefConfig.videoScaleMode == PreferenceConfiguration.ScaleMode.FIT && streamContainer != null && streamContainer.getScaleX() == 1) {
             view = streamContainer;
         } else {
             view = (View)rootView;
         }
 
-        int[] viewLocation = new int[2];
-
-        view.getLocationOnScreen(viewLocation);
-
-        int left = viewLocation[0];
-        int top = viewLocation[1];
-        int width = view.getWidth();
-        int height = view.getHeight();
+        int width = 0;
+        int height = 0;
+        if (view != null) {
+            width = view.getWidth();
+            height = view.getHeight();
+        }
         if (width <= 0 || height <= 0) {
             width = displayWidth > 0 ? displayWidth : 1920;
             height = displayHeight > 0 ? displayHeight : 1080;
         }
 
-        // Ensure aspect ratio is strictly within Android's allowed PiP bounds [0.418410f, 2.390000f]
-        float ratio = (float) width / (float) height;
+        int num = width;
+        int den = height;
+        float ratio = (float) num / (float) den;
         if (ratio < 0.418410f) {
-            width = 419;
-            height = 1000;
+            num = 419;
+            den = 1000;
         } else if (ratio > 2.390000f) {
-            width = 239;
-            height = 100;
+            num = 239;
+            den = 100;
         }
-        Rational aspectRatio = new Rational(width, height);
-        hint = new Rect(left, top, left + width, top + height);
+        Rational aspectRatio = new Rational(num, den);
 
         PictureInPictureParams.Builder builder =
                 new PictureInPictureParams.Builder()
-                        .setAspectRatio(aspectRatio)
-                        .setSourceRectHint(hint);
+                        .setAspectRatio(aspectRatio);
+
+        if (view != null && view.getWidth() > 0 && view.getHeight() > 0) {
+            int[] viewLocation = new int[2];
+            view.getLocationOnScreen(viewLocation);
+            int left = Math.max(0, viewLocation[0]);
+            int top = Math.max(0, viewLocation[1]);
+            builder.setSourceRectHint(new Rect(left, top, left + view.getWidth(), top + view.getHeight()));
+        }
+
+        // Add single fullscreen action button so tapping PiP gives one button to return to fullscreen
+        Intent fullscreenIntent = new Intent(this, Game.class);
+        fullscreenIntent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent fullscreenPendingIntent = PendingIntent.getActivity(
+                this,
+                100,
+                fullscreenIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+        );
+
+        Icon icon = Icon.createWithResource(this, R.drawable.ic_qm_fullscreen);
+        RemoteAction fullscreenAction = new RemoteAction(
+                icon,
+                getString(R.string.pip_action_fullscreen),
+                getString(R.string.pip_action_fullscreen_desc),
+                fullscreenPendingIntent
+        );
+        ArrayList<RemoteAction> actions = new ArrayList<>();
+        actions.add(fullscreenAction);
+        builder.setActions(actions);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(autoEnter);
@@ -1545,9 +1572,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+        this.isInPip = isInPictureInPictureMode;
         LimeLog.info("onPictureInPictureModeChanged: " + isInPictureInPictureMode);
 
         if (isInPictureInPictureMode) {
+            this.wasInPipMode = true;
             isInBackground = false;
 
             // Ensure video decoder renders to the floating PiP surface
@@ -1593,6 +1622,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
             UiHelper.notifyStreamEnteringPiP(this);
         } else {
+            this.isInPip = false;
             // Exiting PiP mode back to fullscreen
             if (decoderRenderer != null) {
                 decoderRenderer.notifyVideoForeground();
@@ -1602,6 +1632,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             }
 
             if (!isFinishing()) {
+                this.wasInPipMode = false;
                 setInputGrabState(true);
                 if (controllerHandler != null) {
                     controllerHandler.enableSensors();
@@ -2225,9 +2256,23 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             streamContainer.requestLayout();
             streamContainer.invalidate();
         }
+
+        wasInPipMode = false;
+
+        if (pendingEnterPip) {
+            pendingEnterPip = false;
+            if (rootView != null) {
+                rootView.post(this::enterPipMode);
+            } else {
+                enterPipMode();
+            }
+        }
     }
 
     private boolean isExplicitDisconnect = false;
+    private boolean pendingEnterPip = false;
+    private boolean wasInPipMode = false;
+    private boolean isInPip = false;
 
     @Override
     protected void onNewIntent(Intent intent) {
@@ -2237,14 +2282,33 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             stopConnection();
             finish();
         } else if (intent != null && StreamKeepaliveService.ACTION_ENTER_PIP.equals(intent.getAction())) {
-            enterPipMode();
+            if (getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+                pendingEnterPip = false;
+                enterPipMode();
+            } else {
+                pendingEnterPip = true;
+            }
         }
     }
 
     @Override
     public void finish() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode() && prefConfig != null && prefConfig.enableBackgroundStreaming && !isExplicitDisconnect) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && (wasInPipMode || isInPip) && prefConfig != null && prefConfig.enableBackgroundStreaming && !isExplicitDisconnect) {
             LimeLog.info("PiP window dismissed by user: transitioning to background streaming without ending session");
+            wasInPipMode = false;
+            isInPip = false;
+            isInBackground = true;
+            if (keepaliveManager != null) {
+                keepaliveManager.setInBackground(true);
+            }
+            if (!prefConfig.enableBackgroundAudio) {
+                com.limelight.binding.audio.AndroidAudioRenderer.setMuted(true);
+            }
+            if (decoderRenderer != null) {
+                decoderRenderer.notifyVideoBackground();
+                decoderRenderer.onSurfaceDestroyed();
+            }
+            StreamKeepaliveService.start(this);
             moveTaskToBack(true);
             return;
         }
@@ -4231,6 +4295,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode()) {
+            return super.dispatchTouchEvent(event);
+        }
         // On Samsung builds the standalone DualSense touch node can be routed
         // through the Activity touch dispatcher rather than generic motion.
         // Consume only genuine external touchpad events; touchscreen input must
@@ -4298,12 +4365,18 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     public boolean onGenericMotion(View view, MotionEvent event) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode()) {
+            return false;
+        }
         return handleMotionEvent(view, event);
     }
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouch(View view, MotionEvent event) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode()) {
+            return false;
+        }
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             // Tell the OS not to buffer input events for us
             //
@@ -5172,6 +5245,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     public boolean onKey(View view, int keyCode, KeyEvent keyEvent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode()) {
+            return false;
+        }
         switch (keyEvent.getAction()) {
             case KeyEvent.ACTION_DOWN:
                 return handleKeyDown(keyEvent);

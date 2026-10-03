@@ -148,6 +148,7 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
     private int consecutiveCrashCount;
     private String glRenderer;
     private boolean foreground = true;
+    private Surface currentAttachedSurface = null;
     private volatile boolean surfaceAvailable = false;
     private volatile boolean needsIdrFrame = false;
     private volatile long lastIdrRequestTimeMs = 0;
@@ -393,17 +394,19 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
             return;
         }
 
-        Surface oldTarget = this.renderTarget;
         this.renderTarget = renderTarget;
         this.surfaceAvailable = true;
         this.foreground = true;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && videoDecoder != null && oldTarget != null && oldTarget != renderTarget) {
-            try {
-                videoDecoder.setOutputSurface(renderTarget);
-                LimeLog.info("setOutputSurface attached successfully: " + renderTarget);
-            } catch (Throwable t) {
-                LimeLog.warning("setOutputSurface failed: " + t.getMessage());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && videoDecoder != null) {
+            if (currentAttachedSurface != renderTarget) {
+                try {
+                    videoDecoder.setOutputSurface(renderTarget);
+                    currentAttachedSurface = renderTarget;
+                    LimeLog.info("setOutputSurface attached successfully: " + renderTarget);
+                } catch (Throwable t) {
+                    LimeLog.warning("setOutputSurface failed: " + t.getMessage());
+                }
             }
         }
         needsIdrFrame = true;
@@ -660,6 +663,7 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
         LimeLog.info("Configuring with format: "+format);
 
         videoDecoder.configure(format, renderTarget, null, 0);
+        currentAttachedSurface = renderTarget;
 
         try { applySurfaceFrameRate(renderTarget, targetFps); } catch (Throwable ignored) {}
 
@@ -733,6 +737,7 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
             if (!configured && videoDecoder != null) {
                 videoDecoder.release();
                 videoDecoder = null;
+                currentAttachedSurface = null;
             }
         }
         return configured;
@@ -1716,6 +1721,7 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
 
     @Override
     public void cleanup() {
+        currentAttachedSurface = null;
         videoDecoder.release();
     }
 
